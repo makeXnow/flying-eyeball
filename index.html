@@ -20,32 +20,34 @@
         }
         html, body {
             height: 100%;
+            width: 100%;
             margin: 0;
             padding: 0;
             overflow: hidden;
+            background-color: #1f2937;
         }
         body {
-            background-color: #1f2937;
             touch-action: none;
             display: flex;
             justify-content: center;
-            align-items: center;
-            height: 100dvh; 
-            width: 100dvw;
-            margin: 0;
-            padding: 0;
+            align-items: flex-end; /* Anchor to the bottom for tall screens */
+            /* iOS PWA height fix */
+            height: 100vh;
+            height: -webkit-fill-available;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
         #game-container {
             position: relative;
             width: 100%;
             height: 100%;
+            /* Force strict 9:16 aspect ratio */
             max-width: calc(100dvh * (9 / 16));
             max-height: calc(100dvw * (16 / 9));
             aspect-ratio: 9 / 16;
             background: white;
             box-shadow: 0 0 50px rgba(0,0,0,0.5);
             overflow: hidden;
+            flex-shrink: 0; /* Prevent flexbox from shrinking the container */
         }
         canvas {
             display: block;
@@ -59,25 +61,27 @@
             left: 0;
             width: 100%;
             pointer-events: none;
-            padding: calc(var(--u) * 4);
+            padding: calc(var(--u) * 2);
             z-index: 100;
         }
         #joystick {
-            position: absolute;
+            position: fixed;
             width: calc(var(--u) * 16);
             height: calc(var(--u) * 16);
-            background: rgba(0, 0, 0, 0.05);
-            border: 2px solid rgba(0, 0, 0, 0.1);
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.5);
+            box-shadow: 0 0 15px rgba(0,0,0,0.2);
             border-radius: 50%;
             pointer-events: none;
             display: none;
-            z-index: 20;
+            z-index: 1000;
         }
         #joystick-knob {
             position: absolute;
-            width: calc(var(--u) * 6);
-            height: calc(var(--u) * 6);
-            background: rgba(0, 0, 0, 0.15);
+            width: calc(var(--u) * 7);
+            height: calc(var(--u) * 7);
+            background: rgba(255, 255, 255, 0.8);
+            box-shadow: 0 0 10px rgba(0,0,0,0.3);
             border-radius: 50%;
             top: 50%;
             left: 50%;
@@ -129,7 +133,6 @@
             <span id="score-val">0</span>
         </div>
     </div>
-    <div id="joystick"><div id="joystick-knob"></div></div>
     <canvas id="gameCanvas"></canvas>
     <div id="game-over" class="absolute inset-0 flex-col items-center justify-start text-center" style="display: none; padding: calc(var(--u) * 4);">
         <div class="h-[22%] w-full"></div>
@@ -142,7 +145,7 @@
             <div class="w-full bg-white overflow-hidden shadow-sm border border-gray-100 text-left" style="border-radius: calc(var(--u) * 3); margin-bottom: calc(var(--u) * 4);">
                 <div class="bg-gray-50 border-bottom border-gray-100 font-black text-gray-400 tracking-[0.2em] uppercase text-center txt-lb-header" style="padding-top: calc(var(--u) * 2); padding-bottom: calc(var(--u) * 2);">🏆 Global Top 5 🏆</div>
                 <div id="leaderboard-list" class="text-gray-700 font-bold">
-                    <div class="py-6 text-gray-300 italic text-center txt-lb-name">Syncing Feed...</div>
+                    <div class="text-gray-300 italic text-center txt-lb-name" style="padding-top: calc(var(--u) * 4); padding-bottom: calc(var(--u) * 4);">Syncing Feed...</div>
                 </div>
             </div>
             <button id="restart-btn" class="bg-blue-500 hover:bg-blue-600 text-white font-black transition-all active:shadow-none active:translate-y-1 w-full uppercase tracking-wider txt-btn" style="padding: calc(var(--u) * 3) calc(var(--u) * 6); border-radius: calc(var(--u) * 3); box-shadow: 0 calc(var(--u) * 1) 0 rgb(37,99,235);">Play Again</button>
@@ -392,6 +395,7 @@
     let hero = { x: 0, y: 0, vx: 0, vy: 0, colorBursts: [], eyeLookX: 0, eyeLookY: 0, baseSpeed: 5 };
     let rewards = [], floatingTexts = [], spawnTimers = { rewards: {} };
     let width, height, unit, score = 0, gameActive = true, isFetching = false, isWindowVisible = true;
+    let gameOverTime = 0, dyingEntities = [], isGameOverAnimating = false;
     let scores = [], lastPlayerName = "", gameStartTime = 0, totalPauseTime = 0, lastPauseStarted = 0;
     const canvas = document.getElementById('gameCanvas'), ctx = canvas.getContext('2d');
     const joystickEl = document.getElementById('joystick'), knobEl = document.getElementById('joystick-knob');
@@ -419,10 +423,10 @@
             if (fitsAt !== -1 && score > 0) { tempScores.splice(fitsAt, 0, { name: "__INPUT__", score: score }); tempScores = tempScores.slice(0, 5); }
             leaderboardList.innerHTML = tempScores.map((s, i) => {
                 const rankIcon = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : ''; const isEntry = s.name === "__INPUT__";
-                return `<div class="leaderboard-item ${isEntry ? 'bg-blue-50 py-6 ring-2 ring-blue-400' : ''}"><div class="flex items-center gap-3 flex-1 mr-4"><span class="text-[10px] text-gray-300 w-3">${i+1}</span>${isEntry ? `<input type="text" id="high-score-name" value="${lastPlayerName}" maxlength="12" class="name-input" placeholder="ENTER YOUR NAME" oninput="window.updateRestartButton()">` : `<span class="txt-lb-name tracking-tight text-gray-600 truncate max-w-[120px]">${s.name} ${rankIcon}</span>`}</div><span class="txt-lb-score text-blue-500 font-black">${s.score}</span></div>`;
+                return `<div class="leaderboard-item ${isEntry ? 'bg-blue-50 ring-2 ring-blue-400' : ''}" style="${isEntry ? `padding-top: calc(var(--u) * 4); padding-bottom: calc(var(--u) * 4);` : ''}"><div class="flex items-center gap-3 flex-1 mr-4"><span class="text-[10px] text-gray-300 w-3">${i+1}</span>${isEntry ? `<input type="text" id="high-score-name" value="${lastPlayerName}" maxlength="12" class="name-input" placeholder="ENTER YOUR NAME" oninput="window.updateRestartButton()">` : `<span class="txt-lb-name tracking-tight text-gray-600 truncate max-w-[120px]">${s.name} ${rankIcon}</span>`}</div><span class="txt-lb-score text-blue-500 font-black">${s.score}</span></div>`;
             }).join(''); window.updateRestartButton();
         } else {
-            leaderboardList.innerHTML = scores.length > 0 ? scores.map((s, i) => `<div class="leaderboard-item"><div class="flex items-center gap-3"><span class="text-[10px] text-gray-300 w-3">${i+1}</span><span class="txt-lb-name tracking-tight text-gray-600 truncate max-w-[120px]">${s.name} ${i<3?['🥇','🥈','🥉'][i]:''}</span></div><span class="txt-lb-score text-blue-500 font-black">${s.score}</span></div>`).join('') : `<div class="py-6 text-gray-300 italic text-center txt-lb-name">No records yet...</div>`;
+            leaderboardList.innerHTML = scores.length > 0 ? scores.map((s, i) => `<div class="leaderboard-item"><div class="flex items-center gap-3"><span class="text-[10px] text-gray-300 w-3">${i+1}</span><span class="txt-lb-name tracking-tight text-gray-600 truncate max-w-[120px]">${s.name} ${i<3?['🥇','🥈','🥉'][i]:''}</span></div><span class="txt-lb-score text-blue-500 font-black">${s.score}</span></div>`).join('') : `<div class="text-gray-300 italic text-center txt-lb-name" style="padding-top: calc(var(--u) * 4); padding-bottom: calc(var(--u) * 4);">No records yet...</div>`;
         }
     }
     window.updateRestartButton = () => { const inputField = document.getElementById('high-score-name'); restartBtn.innerText = (inputField && inputField.value.trim().length > 0) ? "Save & Play Again" : "Play Again"; };
@@ -455,7 +459,23 @@
         const rect = document.getElementById('game-container').getBoundingClientRect(); const dpr = window.devicePixelRatio || 1; width = rect.width; height = rect.height; canvas.width = width * dpr; canvas.height = height * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0); unit = height / 200; document.documentElement.style.setProperty('--u', `${unit}px`); hero.x = width / 2; hero.y = height * 0.15;
     }
     function update(now) {
-        if (!isWindowVisible) return; if (!gameActive) { const bobSpeed = 0.003, bobPhase = now * bobSpeed, bobAmt = unit * 4; hero.y = height * 0.15 + Math.sin(bobPhase) * bobAmt; return; }
+        if (!isWindowVisible) return;
+        // Handle game over animation
+        if (isGameOverAnimating) {
+            const elapsed = Date.now() - gameOverTime;
+            if (elapsed >= 500) {
+                isGameOverAnimating = false;
+                dyingEntities = [];
+                rewards = [];
+                gameOverScreen.style.display = 'flex';
+                renderLeaderboard();
+            } else {
+                // Update falling entities
+                dyingEntities.forEach(e => { e.y += e.vy * unit * 0.5; e.vy += 0.15; });
+            }
+            return;
+        }
+        if (!gameActive) { const bobSpeed = 0.003, bobPhase = now * bobSpeed, bobAmt = unit * 4; hero.y = height * 0.15 + Math.sin(bobPhase) * bobAmt; return; }
         const inputDx = input.currX - input.startX, inputDy = input.currY - input.startY;
         if (input.active) { 
             const dx = input.currX - input.startX, dy = input.currY - input.startY, dist = Math.sqrt(dx * dx + dy * dy);
@@ -464,32 +484,96 @@
         } else { hero.vx *= 0.9; hero.vy *= 0.9; }
         hero.x = Math.max(unit * 8, Math.min(width - unit * 8, hero.x + hero.vx)); hero.y = Math.max(unit * 8, Math.min(height - unit * 8, hero.y + hero.vy));
         const lookAngle = Math.atan2(inputDy, inputDx), lookDist = input.active ? Math.min(Math.sqrt(inputDx*inputDx + inputDy*inputDy) / (8 * unit), 1) * (2.4 * unit) : 0; hero.eyeLookX += (Math.cos(lookAngle) * lookDist - hero.eyeLookX) * 0.1; hero.eyeLookY += (Math.sin(lookAngle) * lookDist - hero.eyeLookY) * 0.1;
-        Object.keys(REWARD_DATA).forEach(emoji => { if (now >= spawnTimers.rewards[emoji]) { spawnReward(emoji); scheduleReward(emoji, now); } });
+        Object.keys(REWARD_DATA).forEach(emoji => { if (rewards.length < 10 && now >= spawnTimers.rewards[emoji]) { spawnReward(emoji); scheduleReward(emoji, now); } });
         for (let i = rewards.length - 1; i >= 0; i--) { const r = rewards[i]; r.growProgress = Math.min(1, r.growProgress + 0.02); const dist = Math.sqrt((hero.x - r.x) ** 2 + (hero.y - r.y) ** 2); if (dist < (8 * unit + r.size)) { score += r.pts; scoreVal.innerText = score; hero.colorBursts.push({ time: now, color: REWARD_DATA[r.emoji].color }); floatingTexts.push({ x: r.x, y: r.y, txt: `+${r.pts}`, time: now, color: REWARD_DATA[r.emoji].color }); rewards.splice(i, 1); } }
         for (let i = floatingTexts.length - 1; i >= 0; i--) { if (now - floatingTexts[i].time > 1000) floatingTexts.splice(i, 1); }
         enemyManager.update(now, width, height, unit, gameStartTime, rewards, hero, gameOver, score);
     }
     function draw(now) {
-        ctx.clearRect(0, 0, width, height); rewards.forEach(r => { const sprite = sprites[r.emoji]; if (sprite) { const s = r.size * r.growProgress * 2; ctx.save(); ctx.globalAlpha = r.growProgress; ctx.drawImage(sprite, r.x - s/2, r.y - s/2, s, s); ctx.restore(); } });
+        ctx.clearRect(0, 0, width, height);
+        // Draw dying entities during game over animation
+        if (isGameOverAnimating) {
+            const elapsed = Date.now() - gameOverTime;
+            const alpha = Math.max(0, 1 - elapsed / 500);
+            dyingEntities.forEach(e => {
+                const sprite = sprites[e.emoji];
+                if (sprite) {
+                    ctx.save();
+                    ctx.globalAlpha = alpha;
+                    ctx.drawImage(sprite, e.x - e.drawSize/2, e.y - e.drawSize/2, e.drawSize, e.drawSize);
+                    ctx.restore();
+                }
+            });
+            drawHero(ctx, hero.x, hero.y, unit, now, hero.eyeLookX, hero.eyeLookY, hero.colorBursts);
+            return;
+        }
+        rewards.forEach(r => { const sprite = sprites[r.emoji]; if (sprite) { const s = r.size * r.growProgress * 2; ctx.save(); ctx.globalAlpha = r.growProgress; ctx.drawImage(sprite, r.x - s/2, r.y - s/2, s, s); ctx.restore(); } });
         enemyManager.draw(ctx, sprites, unit); drawHero(ctx, hero.x, hero.y, unit, now, hero.eyeLookX, hero.eyeLookY, hero.colorBursts);
         floatingTexts.forEach(t => { const p = (now - t.time) / 1000; ctx.save(); ctx.globalAlpha = 1 - p; ctx.fillStyle = t.color; ctx.font = `bold ${unit * (4 + p * 4)}px sans-serif`; ctx.textAlign = 'center'; ctx.fillText(t.txt, t.x, t.y - p * unit * 10); ctx.restore(); });
     }
-    function gameOver() { gameActive = false; finalScoreVal.innerText = score; dashboardScore.style.visibility = 'hidden'; gameOverTitle.innerText = DEATH_MESSAGES[Math.floor(Math.random() * DEATH_MESSAGES.length)]; gameOverScreen.style.display = 'flex'; renderLeaderboard(); }
-    function resetGame() { fetchLeaderboard(); score = 0; scoreVal.innerText = '0'; dashboardScore.style.visibility = 'visible'; hero.vx = hero.vy = 0; hero.colorBursts = []; rewards = []; floatingTexts = []; gameOverScreen.style.display = 'none'; totalPauseTime = 0; gameStartTime = getGameTime(); initTimers(); gameActive = true; }
+    function gameOver() { 
+        gameActive = false; 
+        isGameOverAnimating = true;
+        gameOverTime = Date.now();
+        // Capture all enemies and rewards for falling animation with their current rendered sizes
+        dyingEntities = [];
+        enemyManager.enemies.forEach(e => dyingEntities.push({ emoji: e.emoji, x: e.x, y: e.y, drawSize: e.size * unit * 2, vy: Math.random() * 2 + 1 }));
+        rewards.forEach(r => dyingEntities.push({ emoji: r.emoji, x: r.x, y: r.y, drawSize: r.size * r.growProgress * 2, vy: Math.random() * 2 + 1 }));
+        finalScoreVal.innerText = score; 
+        dashboardScore.style.visibility = 'hidden'; 
+        gameOverTitle.innerText = DEATH_MESSAGES[Math.floor(Math.random() * DEATH_MESSAGES.length)]; 
+    }
+    function resetGame() { fetchLeaderboard(); score = 0; scoreVal.innerText = '0'; dashboardScore.style.visibility = 'visible'; hero.vx = hero.vy = 0; hero.colorBursts = []; rewards = []; floatingTexts = []; dyingEntities = []; isGameOverAnimating = false; gameOverScreen.style.display = 'none'; totalPauseTime = 0; gameStartTime = getGameTime(); initTimers(); gameActive = true; }
     
     let input = { active: false, startX: 0, startY: 0, currX: 0, currY: 0 };
-    canvas.addEventListener('mousedown', e => { if (!gameActive) return; input.active = true; input.startX = input.currX = e.clientX - canvas.getBoundingClientRect().left; input.startY = input.currY = e.clientY - canvas.getBoundingClientRect().top; joystickEl.style.display = 'block'; joystickEl.style.left = `${input.startX - 8 * unit}px`; joystickEl.style.top = `${input.startY - 8 * unit}px`; });
-    window.addEventListener('mousemove', e => { if (!input.active) return; input.currX = e.clientX - canvas.getBoundingClientRect().left; input.currY = e.clientY - canvas.getBoundingClientRect().top; const dx = input.currX - input.startX, dy = input.currY - input.startY, d = Math.min(Math.sqrt(dx*dx+dy*dy), 8 * unit), a = Math.atan2(dy, dx); knobEl.style.transform = `translate(calc(-50% + ${Math.cos(a)*d}px), calc(-50% + ${Math.sin(a)*d}px))`; });
+    window.addEventListener('mousedown', e => { 
+        if (!gameActive) return; 
+        const rect = canvas.getBoundingClientRect();
+        input.active = true; 
+        input.startX = input.currX = e.clientX - rect.left; 
+        input.startY = input.currY = e.clientY - rect.top; 
+        joystickEl.style.display = 'block'; 
+        joystickEl.style.left = `${e.clientX - 8 * unit}px`; 
+        joystickEl.style.top = `${e.clientY - 8 * unit}px`; 
+    });
+    window.addEventListener('mousemove', e => { 
+        if (!input.active) return; 
+        const rect = canvas.getBoundingClientRect();
+        input.currX = e.clientX - rect.left; 
+        input.currY = e.clientY - rect.top; 
+        const dx = input.currX - input.startX, dy = input.currY - input.startY, d = Math.min(Math.sqrt(dx*dx+dy*dy), 8 * unit), a = Math.atan2(dy, dx); 
+        knobEl.style.transform = `translate(calc(-50% + ${Math.cos(a)*d}px), calc(-50% + ${Math.sin(a)*d}px))`; 
+    });
     window.addEventListener('mouseup', () => { input.active = false; joystickEl.style.display = 'none'; });
     document.addEventListener("visibilitychange", () => { if (document.hidden) { isWindowVisible = false; lastPauseStarted = Date.now(); } else { if (lastPauseStarted > 0) totalPauseTime += (Date.now() - lastPauseStarted); isWindowVisible = true; } });
     window.addEventListener('resize', resize);
-    canvas.addEventListener('touchstart', (e) => { e.preventDefault(); const touch = e.touches[0], rect = canvas.getBoundingClientRect(); if (!gameActive) return; input.active = true; input.startX = input.currX = touch.clientX - rect.left; input.startY = input.currY = touch.clientY - rect.top; joystickEl.style.display = 'block'; joystickEl.style.left = `${input.startX - 8 * unit}px`; joystickEl.style.top = `${input.startY - 8 * unit}px`; });
-    canvas.addEventListener('touchmove', (e) => { e.preventDefault(); const touch = e.touches[0], rect = canvas.getBoundingClientRect(); if (!input.active) return; input.currX = touch.clientX - rect.left; input.currY = touch.clientY - rect.top; const dx = input.currX - input.startX, dy = input.currY - input.startY, d = Math.min(Math.sqrt(dx*dx+dy*dy), 8 * unit), a = Math.atan2(dy, dx); knobEl.style.transform = `translate(calc(-50% + ${Math.cos(a)*d}px), calc(-50% + ${Math.sin(a)*d}px))`; });
-    canvas.addEventListener('touchend', () => { input.active = false; joystickEl.style.display = 'none'; });
+    window.addEventListener('touchstart', (e) => { 
+        if (!gameActive) return; 
+        const touch = e.touches[0], rect = canvas.getBoundingClientRect(); 
+        input.active = true; 
+        input.startX = input.currX = touch.clientX - rect.left; 
+        input.startY = input.currY = touch.clientY - rect.top; 
+        joystickEl.style.display = 'block'; 
+        joystickEl.style.left = `${touch.clientX - 8 * unit}px`; 
+        joystickEl.style.top = `${touch.clientY - 8 * unit}px`; 
+    }, { passive: false });
+    window.addEventListener('touchmove', (e) => { 
+        if (!input.active) return; 
+        const touch = e.touches[0], rect = canvas.getBoundingClientRect(); 
+        input.currX = touch.clientX - rect.left; 
+        input.currY = touch.clientY - rect.top; 
+        const dx = input.currX - input.startX, dy = input.currY - input.startY, d = Math.min(Math.sqrt(dx*dx+dy*dy), 8 * unit), a = Math.atan2(dy, dx); 
+        knobEl.style.transform = `translate(calc(-50% + ${Math.cos(a)*d}px), calc(-50% + ${Math.sin(a)*d}px))`; 
+    }, { passive: false });
+    window.addEventListener('touchend', () => { 
+        input.active = false; 
+        joystickEl.style.display = 'none'; 
+    });
     restartBtn.addEventListener('click', handleRestart);
 
     function gameLoop() { const now = getGameTime(); update(now); draw(now); requestAnimationFrame(gameLoop); }
     window.onload = () => { preRenderSprites(); resize(); fetchLeaderboard(); gameStartTime = getGameTime(); initTimers(); gameLoop(); };
 </script>
+    <div id="joystick"><div id="joystick-knob"></div></div>
 </body>
 </html>
