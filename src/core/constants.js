@@ -31,7 +31,7 @@ export const REWARD_DATA = {
 // Enemy configuration
 // emoji: enemy type, firstPts: score threshold to start spawning, min/max: spawn interval in seconds
 export const ENEMY_CONFIG = [
-    { emoji: '🪰', firstPts: 1, min: 3, max: 6 },
+    { emoji: '🪰', firstPts: 0, min: 3, max: 6 },
     { emoji: '🐝', firstPts: 12, min: 5, max: 10 },
     { emoji: '🪲', firstPts: 25, min: 3, max: 12 },
     { emoji: '🐜', firstPts: 50, min: 7, max: 15 },

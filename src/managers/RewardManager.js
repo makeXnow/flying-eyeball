@@ -16,8 +16,13 @@ export class RewardManager {
         this.lastNow = now;
         
         // Schedule initial spawns for all reward types
-        Object.keys(REWARD_DATA).forEach(emoji => {
-            this.scheduleReward(emoji, now);
+        Object.keys(REWARD_DATA).forEach((emoji, index) => {
+            if (index === 0) {
+                // First reward type (🫐) spawns immediately
+                this.spawnTimers[emoji] = now;
+            } else {
+                this.scheduleReward(emoji, now);
+            }
         });
     }
 

@@ -140,7 +140,7 @@
     </div>
     <div id="joystick"><div id="joystick-knob"></div></div>
     <canvas id="gameCanvas"></canvas>
-    <div id="game-over" class="hidden absolute flex flex-col items-center justify-end text-center" style="top: 13%; bottom: 13%; left: 0; right: 0; padding: calc(var(--u) * 4);">
+    <div id="game-over" class="hidden absolute flex flex-col items-center justify-end text-center" style="top: 18%; bottom: 8%; left: 0; right: 0; padding: calc(var(--u) * 4);">
         <h1 id="game-over-title" class="txt-title font-black text-blue-600 uppercase tracking-tight drop-shadow-sm" style="margin-bottom: calc(var(--u) * 3);">VISION LOST!</h1>
         <div class="w-full max-w-sm bg-white/95 shadow-2xl border border-gray-100 backdrop-blur-md flex flex-col items-center" style="padding: calc(var(--u) * 4); border-radius: calc(var(--u) * 6);">
             <div class="bg-blue-50 border-blue-200 shadow-sm w-full" style="border-radius: calc(var(--u) * 4); padding: calc(var(--u) * 3); margin-bottom: calc(var(--u) * 3); border-bottom-width: calc(var(--u) * 0.8);">
@@ -167,8 +167,23 @@
         update(now, width, height, unit) { this.x += this.vx; this.y += this.vy; }
         draw(ctx, sprites, unit) {
             ctx.save(); ctx.translate(this.x, this.y);
-            if (this.orient === 'up') ctx.rotate(Math.atan2(this.vy, this.vx) + Math.PI / 2);
-            else if (this.orient === 'left' && this.vx > 0) ctx.scale(-1, 1);
+            
+            // Shared Orientation Logic
+            if (this.orient === 'up') {
+                ctx.rotate(Math.atan2(this.vy, this.vx) + Math.PI / 2);
+            } else if (this.orient === 'left') {
+                // Left-oriented sprites face left by default.
+                const angle = Math.atan2(this.vy, this.vx);
+                if (Math.abs(angle) > Math.PI / 2) {
+                    // Moving Left-ish
+                    ctx.rotate(angle + Math.PI);
+                } else {
+                    // Moving Right-ish: rotate and flip to stay right-side up
+                    ctx.rotate(angle);
+                    ctx.scale(-1, 1);
+                }
+            }
+            
             const sprite = sprites[this.emoji];
             if (sprite) { const d = this.size * unit * 2; ctx.drawImage(sprite, -d/2, -d/2, d, d); }
             ctx.restore();
@@ -232,34 +247,52 @@
             if (Math.random() < 0.02) this.isGoingUp = !this.isGoingUp;
             const targetVerticalSpeed = this.isGoingUp ? -5 * (unit * 0.05) : 3 * (unit * 0.05);
             this.verticalSpeed += (targetVerticalSpeed - this.verticalSpeed) * 0.1;
-            this.x += this.vx; this.y += this.verticalSpeed;
+            this.x += this.vx; 
+            this.vy = this.verticalSpeed; // Set vy for BaseEnemy.draw to handle rotation
+            this.y += this.vy;
         }
     }
 
     class Ant extends BaseEnemy {
         constructor(x, y, unit, leader = null, offset = 0) {
-            super({ emoji: '🐜', x, y, size: 1.8, speed: 0.25 * unit, orient: 'up' });
+            // Speed is 3x slower than roach (0.5 / 3 = 0.166)
+            const antSpeed = 0.166 * unit;
+            super({ emoji: '🐜', x, y, size: 1.8, speed: antSpeed, orient: 'left' });
             this.canEatRewards = true; this.leader = leader; this.offset = offset; this.history = [];
-            if (!leader) { const diagonals = [Math.PI/4, 3*Math.PI/4, 5*Math.PI/4, 7*Math.PI/4]; this.angle = diagonals[Math.floor(Math.random() * diagonals.length)]; }
-            this.phase = Math.random() * Math.PI * 2;
+            
+            if (!leader) {
+                this.angle = Math.random() * Math.PI * 2;
+                this.vx = Math.cos(this.angle) * this.speed;
+                this.vy = Math.sin(this.angle) * this.speed;
+                this.distTraveled = 0;
+                // Paths are 2x bigger than roach (original 15+5 * 2 = 30+10)
+                this.nextTurnAt = (Math.random() * 30 + 10) * unit;
+            }
         }
         update(now, width, height, unit, rewards) {
             if (!this.leader) {
-                this.phase += 0.08; const perpAngle = this.angle + Math.PI / 2; const wave = Math.cos(this.phase) * (unit * 0.1);
-                this.vx = Math.cos(this.angle) * this.speed + Math.cos(perpAngle) * wave; this.vy = Math.sin(this.angle) * this.speed + Math.sin(perpAngle) * wave;
-                this.x += this.vx; this.y += this.vy; this.history.push({ x: this.x, y: this.y, vx: this.vx, vy: this.vy });
-                if (this.history.length > 100) this.history.shift();
+                super.update(now, width, height, unit);
+                this.distTraveled += this.speed;
+                if (this.distTraveled >= this.nextTurnAt) {
+                    this.angle += (Math.random() * 160 - 80) * Math.PI / 180;
+                    this.vx = Math.cos(this.angle) * this.speed;
+                    this.vy = Math.sin(this.angle) * this.speed;
+                    this.distTraveled = 0;
+                    this.nextTurnAt = (Math.random() * 30 + 10) * unit;
+                }
+                this.history.push({ x: this.x, y: this.y, vx: this.vx, vy: this.vy });
+                if (this.history.length > 300) this.history.shift();
             } else {
-                const targetIdx = this.leader.history.length - 1 - this.offset; const target = this.leader.history[Math.max(0, targetIdx)];
-                if (target) { this.x = target.x; this.y = target.y; this.vx = target.vx; this.vy = target.vy; }
+                const targetIdx = this.leader.history.length - 1 - this.offset;
+                const target = this.leader.history[Math.max(0, targetIdx)];
+                if (target) { 
+                    this.x = target.x; 
+                    this.y = target.y; 
+                    this.vx = target.vx; 
+                    this.vy = target.vy; 
+                }
             }
-            this.angle = Math.atan2(this.vy, this.vx);
             if (rewards) { for (let i = rewards.length - 1; i >= 0; i--) { const r = rewards[i]; const dist = Math.sqrt((this.x - r.x) ** 2 + (this.y - r.y) ** 2); if (dist < (this.size * unit + r.size)) rewards.splice(i, 1); } }
-        }
-        draw(ctx, sprites, unit) {
-            ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(Math.atan2(this.vy, this.vx) + Math.PI / 2);
-            const sprite = sprites[this.emoji]; if (sprite) { const d = this.size * unit * 2; ctx.drawImage(sprite, -d/2, -d/2, d, d); }
-            ctx.restore();
         }
     }
 
@@ -334,13 +367,13 @@
         }
     }
 
-    const TEST_ENEMY = null; // Ant Tester Mode
+    const TEST_ENEMY = null; // Normal Mode
 
     class EnemyManager {
         constructor() {
             this.enemies = []; this.spawnTimers = {}; this.testerMode = TEST_ENEMY;
             this.ENEMY_CONFIG = [
-                { emoji: '🪰', firstPts: 1, min: 3, max: 6 },
+                { emoji: '🪰', firstPts: 0, min: 3, max: 6 },
                 { emoji: '🐝', firstPts: 12, min: 5, max: 10 },
                 { emoji: '🪲', firstPts: 25, min: 3, max: 12 },
                 { emoji: '🐜', firstPts: 50, min: 7, max: 15 },
@@ -348,14 +381,32 @@
                 { emoji: '🪳', firstPts: 150, min: 2, max: 4 }
             ];
         }
-        reset(now, startTime) { this.enemies = []; this.spawnTimers = {}; this.ENEMY_CONFIG.forEach((c, i) => this.schedule(i, now, startTime)); }
+        reset(now, startTime) { 
+            this.enemies = []; 
+            this.spawnTimers = {}; 
+            this.ENEMY_CONFIG.forEach((c, i) => {
+                // TESTER MODE: If this emoji is the test target, set timer to spawn immediately
+                if (this.testerMode && c.emoji === this.testerMode) {
+                    this.spawnTimers[i] = now;
+                } else {
+                    this.schedule(i, now, startTime);
+                }
+            });
+        }
         schedule(i, now, startTime) {
-            const c = this.ENEMY_CONFIG[i]; const isTest = this.testerMode !== null;
-            const randomWait = isTest ? 3000 : (Math.random() * (c.max - c.min) + c.min) * 1000;
+            const c = this.ENEMY_CONFIG[i]; 
+            const isTest = this.testerMode !== null;
+            // TESTER MODE: Test target spawns every 3 seconds
+            const randomWait = (isTest && c.emoji === this.testerMode)
+                ? 3000 
+                : (Math.random() * (c.max - c.min) + c.min) * 1000;
             this.spawnTimers[i] = now + randomWait;
         }
         spawn(i, width, height, unit) {
-            const c = this.ENEMY_CONFIG[i]; if (this.testerMode && c.emoji !== this.testerMode) return;
+            const c = this.ENEMY_CONFIG[i]; 
+            // TESTER MODE: Only spawn the test target if mode is active
+            if (this.testerMode && c.emoji !== this.testerMode) return;
+            
             let x, y, angle, margin = 10 * unit, side = Math.floor(Math.random() * 4);
             if (side === 0) { x = Math.random() * width; y = -margin; } else if (side === 1) { x = width + margin; y = Math.random() * height; }
             else if (side === 2) { x = Math.random() * width; y = height + margin; } else { x = -margin; y = Math.random() * height; }
@@ -365,14 +416,18 @@
             else if (c.emoji === '🐝') this.enemies.push(new Bee(width, height, unit));
             else if (c.emoji === '🐜') {
                 const leader = new Ant(x, y, unit); this.enemies.push(leader);
-                const count = Math.floor(Math.random() * 3) + 3; for (let j = 1; j < count; j++) this.enemies.push(new Ant(x, y, unit, leader, j * 15));
+                const count = Math.floor(Math.random() * 5) + 3; for (let j = 1; j < count; j++) this.enemies.push(new Ant(x, y, unit, leader, j * 20));
             } else if (c.emoji === '🕷️') this.enemies.push(new Spider(width, height, unit));
             else if (c.emoji === '🪳') this.enemies.push(new Roach(x, y, angle, unit));
         }
         update(now, w, h, u, start, rewards, hero, over, currentScore) {
-            if (now - start < 1000) return; const isTest = this.testerMode !== null;
+            const isTest = this.testerMode !== null;
+            // TESTER MODE: Skip 1s grace period for test targets
+            if (!isTest && now - start < 1000) return; 
+
             this.ENEMY_CONFIG.forEach((c, i) => { 
-                const scoreMet = isTest ? true : (currentScore >= c.firstPts);
+                // TESTER MODE: Test targets ignore score requirements
+                const scoreMet = (isTest && c.emoji === this.testerMode) ? true : (currentScore >= c.firstPts);
                 if (scoreMet && now >= this.spawnTimers[i]) { this.spawn(i, w, h, u); this.schedule(i, now, start); } 
             });
             for (let i = this.enemies.length - 1; i >= 0; i--) {
@@ -395,6 +450,7 @@
     let hero = { x: 0, y: 0, vx: 0, vy: 0, colorBursts: [], eyeLookX: 0, eyeLookY: 0, baseSpeed: 5 };
     let rewards = [], floatingTexts = [], spawnTimers = { rewards: {} };
     let width, height, unit, score = 0, gameActive = true, isFetching = false, isWindowVisible = true;
+    let rewardClock = 0, lastRewardClockUpdate = 0;
     let scores = [], lastPlayerName = "", gameStartTime = 0, totalPauseTime = 0, lastPauseStarted = 0;
     let isGameOverAnimating = false, gameOverStartTime = 0;
     const canvas = document.getElementById('gameCanvas'), ctx = canvas.getContext('2d');
@@ -436,8 +492,21 @@
         emojis.forEach(emoji => { const off = document.createElement('canvas'); off.width = off.height = SPRITE_RESOLUTION; const octx = off.getContext('2d'); octx.font = `${SPRITE_RESOLUTION * 0.8}px serif`; octx.textAlign = 'center'; octx.textBaseline = 'middle'; octx.fillText(emoji, SPRITE_RESOLUTION / 2, SPRITE_RESOLUTION / 2); sprites[emoji] = off; });
     }
     function getGameTime() { return isWindowVisible ? Date.now() - totalPauseTime : lastPauseStarted - totalPauseTime; }
-    function scheduleReward(emoji, now) { const d = REWARD_DATA[emoji]; spawnTimers.rewards[emoji] = now + (Math.random() * (d.max - d.min) + d.min) * 1000; }
-    function initTimers() { const now = getGameTime(); Object.keys(REWARD_DATA).forEach(k => scheduleReward(k, now)); enemyManager.reset(now, gameStartTime); }
+    function scheduleReward(emoji) { const d = REWARD_DATA[emoji]; spawnTimers.rewards[emoji] = rewardClock + (Math.random() * (d.max - d.min) + d.min) * 1000; }
+    function initTimers() { 
+        const now = getGameTime(); 
+        rewardClock = 0; 
+        lastRewardClockUpdate = now; 
+        Object.keys(REWARD_DATA).forEach((k, i) => {
+            if (i === 0) {
+                // First reward type (🫐) spawns immediately
+                spawnTimers.rewards[k] = 0;
+            } else {
+                scheduleReward(k);
+            }
+        }); 
+        enemyManager.reset(now, gameStartTime); 
+    }
     function spawnReward(emoji) { const d = REWARD_DATA[emoji]; rewards.push({ emoji, x: Math.random() * (width - 40 * unit) + 20 * unit, y: Math.random() * (height - 40 * unit) + 20 * unit, size: d.size * unit, growProgress: 0, pts: d.pts }); }
     function drawHero(ctx, x, y, sc, now, lookX, lookY, bursts) {
         ctx.save(); ctx.translate(x, y); const s10 = 10 * sc, s5 = 5 * sc, s2 = 2 * sc, s6 = 6 * sc;
@@ -456,13 +525,13 @@
         ctx.beginPath(); ctx.arc(lookX * 1.5, lookY * 1.5, s2, 0, Math.PI * 2); ctx.fillStyle = 'black'; ctx.fill(); ctx.restore();
     }
     function resize() {
-        const rect = document.getElementById('game-container').getBoundingClientRect(); const dpr = window.devicePixelRatio || 1; width = rect.width; height = rect.height; canvas.width = width * dpr; canvas.height = height * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0); unit = height / 200; document.documentElement.style.setProperty('--u', `${unit}px`); hero.x = width / 2; hero.y = height * 0.15;
+        const rect = document.getElementById('game-container').getBoundingClientRect(); const dpr = window.devicePixelRatio || 1; width = rect.width; height = rect.height; canvas.width = width * dpr; canvas.height = height * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0); unit = height / 200; document.documentElement.style.setProperty('--u', `${unit}px`); hero.x = width / 2; hero.y = height / 2;
     }
     function update(now) {
         if (!isWindowVisible) return;
         if (isGameOverAnimating) {
             const progress = (now - gameOverStartTime) / 500;
-            const oldY = hero.y; hero.y = height * 0.15 + Math.sin(now * 0.003) * (unit * 4);
+            const oldY = hero.y; hero.y = height * 0.20 + Math.sin(now * 0.003) * (unit * 4);
             hero.x = width / 2;
             const dy = hero.y - oldY, lookDist = Math.min(Math.abs(dy * 10) / unit, 1) * (2.4 * unit), lookAngle = dy >= 0 ? Math.PI / 2 : -Math.PI / 2;
             hero.eyeLookX += (0 - hero.eyeLookX) * 0.1; hero.eyeLookY += (Math.sin(lookAngle) * lookDist - hero.eyeLookY) * 0.1;
@@ -471,7 +540,7 @@
             return;
         }
         if (!gameActive) {
-            const oldY = hero.y; hero.y = height * 0.15 + Math.sin(now * 0.003) * (unit * 4);
+            const oldY = hero.y; hero.y = height * 0.20 + Math.sin(now * 0.003) * (unit * 4);
             hero.x = width / 2;
             const dy = hero.y - oldY, lookDist = Math.min(Math.abs(dy * 10) / unit, 1) * (2.4 * unit), lookAngle = dy >= 0 ? Math.PI / 2 : -Math.PI / 2;
             hero.eyeLookX += (0 - hero.eyeLookX) * 0.1; hero.eyeLookY += (Math.sin(lookAngle) * lookDist - hero.eyeLookY) * 0.1;
@@ -485,7 +554,10 @@
         } else { hero.vx *= 0.9; hero.vy *= 0.9; }
         hero.x = Math.max(unit * 10, Math.min(width - unit * 10, hero.x + hero.vx)); hero.y = Math.max(unit * 10, Math.min(height - unit * 10, hero.y + hero.vy));
         const lookAngle = Math.atan2(inputDy, inputDx), lookDist = input.active ? Math.min(Math.sqrt(inputDx*inputDx + inputDy*inputDy) / (10 * unit), 1) * (2.4 * unit) : 0; hero.eyeLookX += (Math.cos(lookAngle) * lookDist - hero.eyeLookX) * 0.1; hero.eyeLookY += (Math.sin(lookAngle) * lookDist - hero.eyeLookY) * 0.1;
-        Object.keys(REWARD_DATA).forEach(emoji => { if (rewards.length < 10 && now >= spawnTimers.rewards[emoji]) { spawnReward(emoji); scheduleReward(emoji, now); } });
+        // Update reward clock only when under 10 rewards (pauses when at max)
+        if (rewards.length < 10) { rewardClock += now - lastRewardClockUpdate; }
+        lastRewardClockUpdate = now;
+        Object.keys(REWARD_DATA).forEach(emoji => { if (rewardClock >= spawnTimers.rewards[emoji]) { spawnReward(emoji); scheduleReward(emoji); } });
         for (let i = rewards.length - 1; i >= 0; i--) { const r = rewards[i]; r.growProgress = Math.min(1, r.growProgress + 0.02); const dist = Math.sqrt((hero.x - r.x) ** 2 + (hero.y - r.y) ** 2); if (dist < (8 * unit + r.size)) { score += r.pts; scoreVal.innerText = score; hero.colorBursts.push({ time: now, color: REWARD_DATA[r.emoji].color }); floatingTexts.push({ x: r.x, y: r.y, txt: `+${r.pts}`, time: now, color: REWARD_DATA[r.emoji].color }); rewards.splice(i, 1); } }
         for (let i = floatingTexts.length - 1; i >= 0; i--) { if (now - floatingTexts[i].time > 1000) floatingTexts.splice(i, 1); }
         enemyManager.update(now, width, height, unit, gameStartTime, rewards, hero, gameOver, score);
@@ -503,7 +575,7 @@
     }
     function gameOver() { if (!gameActive || isGameOverAnimating) return; gameActive = false; isGameOverAnimating = true; gameOverStartTime = getGameTime(); }
     function gameOverActual() { finalScoreVal.innerText = score; dashboardScore.style.visibility = 'hidden'; gameOverTitle.innerText = DEATH_MESSAGES[Math.floor(Math.random() * DEATH_MESSAGES.length)]; gameOverScreen.style.display = 'flex'; renderLeaderboard(); }
-    function resetGame() { fetchLeaderboard(); score = 0; scoreVal.innerText = '0'; dashboardScore.style.visibility = 'visible'; hero.vx = hero.vy = 0; hero.colorBursts = []; rewards = []; floatingTexts = []; gameOverScreen.style.display = 'none'; totalPauseTime = 0; gameStartTime = getGameTime(); initTimers(); gameActive = true; isGameOverAnimating = false; }
+    function resetGame() { fetchLeaderboard(); score = 0; scoreVal.innerText = '0'; dashboardScore.style.visibility = 'visible'; hero.x = width / 2; hero.y = height / 2; hero.vx = hero.vy = 0; hero.colorBursts = []; rewards = []; floatingTexts = []; gameOverScreen.style.display = 'none'; totalPauseTime = 0; gameStartTime = getGameTime(); initTimers(); gameActive = true; isGameOverAnimating = false; }
     
     let input = { active: false, startX: 0, startY: 0, currX: 0, currY: 0 };
     canvas.addEventListener('mousedown', e => { if (!gameActive) return; input.active = true; input.startX = input.currX = e.clientX - canvas.getBoundingClientRect().left; input.startY = input.currY = e.clientY - canvas.getBoundingClientRect().top; joystickEl.style.display = 'block'; joystickEl.style.left = `${input.startX - 8 * unit}px`; joystickEl.style.top = `${input.startY - 8 * unit}px`; });

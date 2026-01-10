@@ -4,7 +4,7 @@ export class Ant extends BaseEnemy {
     constructor(x, y, unit, leader = null, offset = 0) {
         // Speed is 3x slower than roach (0.5 / 3 = 0.166)
         const antSpeed = 0.166 * unit;
-        super({ emoji: '🐜', x, y, size: 1.8, speed: antSpeed, orient: 'up' });
+        super({ emoji: '🐜', x, y, size: 1.8, speed: antSpeed, orient: 'left' });
         this.canEatRewards = true; this.leader = leader; this.offset = offset; this.history = [];
         
         if (!leader) {
@@ -28,12 +28,17 @@ export class Ant extends BaseEnemy {
                 this.distTraveled = 0;
                 this.nextTurnAt = (Math.random() * 30 + 10) * unit;
             }
-            this.history.push({ x: this.x, y: this.y, angle: this.angle });
-            if (this.history.length > 200) this.history.shift();
+            this.history.push({ x: this.x, y: this.y, vx: this.vx, vy: this.vy });
+            if (this.history.length > 300) this.history.shift();
         } else {
             const targetIdx = this.leader.history.length - 1 - this.offset;
             const target = this.leader.history[Math.max(0, targetIdx)];
-            if (target) { this.x = target.x; this.y = target.y; this.angle = target.angle; }
+            if (target) { 
+                this.x = target.x; 
+                this.y = target.y; 
+                this.vx = target.vx; 
+                this.vy = target.vy; 
+            }
         }
         
         // Ants can eat rewards
@@ -44,11 +49,5 @@ export class Ant extends BaseEnemy {
                 if (dist < (this.size * unit + r.size)) rewards.splice(i, 1);
             }
         }
-    }
-
-    draw(ctx, sprites, unit) {
-        ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(this.angle + Math.PI / 2);
-        const sprite = sprites[this.emoji]; if (sprite) { const d = this.size * unit * 2; ctx.drawImage(sprite, -d/2, -d/2, d, d); }
-        ctx.restore();
     }
 }

@@ -7,28 +7,34 @@ import { Spider } from '../enemies/Spider.js';
 import { Roach } from '../enemies/Roach.js';
 
 // Enable for testing a specific enemy type (set to emoji like '🪰')
-const TEST_ENEMY = '🐜';
+const TEST_ENEMY = null;
 
 export class EnemyManager {
     constructor() {
         this.enemies = [];
         this.spawnTimers = {};
-        this.testerMode = '🐜'; // Forced ant mode
-        console.log('EnemyManager initialized. Forced Tester mode:', this.testerMode);
+        this.testerMode = TEST_ENEMY;
     }
 
     reset(now, gameStartTime) {
         this.enemies = [];
         this.spawnTimers = {};
         ENEMY_CONFIG.forEach((config, index) => {
-            this.scheduleEnemy(index, now, gameStartTime);
+            // TESTER MODE: If this emoji is the test target, set timer to spawn immediately
+            if (this.testerMode && config.emoji === this.testerMode) {
+                this.spawnTimers[index] = now;
+            } else {
+                this.scheduleEnemy(index, now, gameStartTime);
+            }
         });
     }
 
     scheduleEnemy(index, now, gameStartTime) {
         const config = ENEMY_CONFIG[index];
         const isTest = this.testerMode !== null;
-        const randomWait = isTest 
+        
+        // TESTER MODE: Test target spawns every 3 seconds
+        const randomWait = (isTest && config.emoji === this.testerMode)
             ? 3000 
             : (Math.random() * (config.max - config.min) + config.min) * 1000;
         this.spawnTimers[index] = now + randomWait;
@@ -37,7 +43,7 @@ export class EnemyManager {
     spawn(index, width, height, unit) {
         const config = ENEMY_CONFIG[index];
         
-        // If testerMode is on, only spawn if it matches
+        // TESTER MODE: Only spawn the test target if mode is active
         if (this.testerMode && config.emoji !== this.testerMode) {
             return;
         }
@@ -79,9 +85,9 @@ export class EnemyManager {
                 // Spawn a group of ants
                 const leader = new Ant(x, y, unit);
                 this.enemies.push(leader);
-                const count = Math.floor(Math.random() * 3) + 3; // 3-5 ants
+                const count = Math.floor(Math.random() * 5) + 3; // 3-7 ants
                 for (let i = 1; i < count; i++) {
-                    this.enemies.push(new Ant(x, y, unit, leader, i * 12));
+                    this.enemies.push(new Ant(x, y, unit, leader, i * 20));
                 }
                 break;
             case '🕷️':
@@ -96,9 +102,13 @@ export class EnemyManager {
     update(now, width, height, unit, gameStartTime, rewards, hero, onGameOver, currentScore) {
         const isTest = this.testerMode !== null;
 
+        // TESTER MODE: Skip 1s grace period for test targets
+        if (!isTest && now - gameStartTime < 1000) return;
+
         // Check spawn timers
         ENEMY_CONFIG.forEach((config, index) => {
-            const scoreMet = isTest ? true : (currentScore >= config.firstPts);
+            // TESTER MODE: Test targets ignore score requirements
+            const scoreMet = (isTest && config.emoji === this.testerMode) ? true : (currentScore >= config.firstPts);
             if (scoreMet && now >= this.spawnTimers[index]) {
                 this.spawn(index, width, height, unit);
                 this.scheduleEnemy(index, now, gameStartTime);

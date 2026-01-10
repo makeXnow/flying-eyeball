@@ -1,3 +1,5 @@
+import { applyOrientation } from '../core/orientation.js';
+
 export class BaseEnemy {
     constructor(config) {
         this.emoji = config.emoji;
@@ -22,11 +24,7 @@ export class BaseEnemy {
         ctx.save();
         ctx.translate(this.x, this.y);
         
-        if (this.orient === 'up') {
-            ctx.rotate(Math.atan2(this.vy, this.vx) + Math.PI / 2);
-        } else if (this.orient === 'left' && this.vx > 0) {
-            ctx.scale(-1, 1);
-        }
+        applyOrientation(ctx, this.orient, this.vx, this.vy);
         
         const sprite = sprites[this.emoji];
         if (sprite) {

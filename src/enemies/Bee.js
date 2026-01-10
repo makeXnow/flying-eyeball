@@ -33,6 +33,7 @@ export class Bee extends BaseEnemy {
         this.verticalSpeed += (targetVerticalSpeed - this.verticalSpeed) * 0.1;
         
         this.x += this.vx;
-        this.y += this.verticalSpeed;
+        this.vy = this.verticalSpeed; // Set vy for BaseEnemy.draw to handle rotation
+        this.y += this.vy;
     }
 }
