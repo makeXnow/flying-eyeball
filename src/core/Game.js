@@ -111,6 +111,9 @@ export class Game {
         if (this.isGameOverAnimating) {
             const progress = (now - this.gameOverStartTime) / 500;
             
+            // Hero stays bobbing in the center horizontally, but at original height
+            this.hero.idleBob(now, width / 2, height * 0.15, unit);
+
             if (progress >= 1) {
                 this.isGameOverAnimating = false;
                 this.uiManager.showGameOver(this.score);
@@ -124,7 +127,7 @@ export class Game {
 
         if (!this.gameActive) {
             // Just do idle bob animation when game is not active
-            this.hero.idleBob(now, height * 0.15, unit);
+            this.hero.idleBob(now, width / 2, height * 0.15, unit);
             return;
         }
 

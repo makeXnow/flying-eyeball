@@ -61,11 +61,23 @@ export class Hero {
     }
 
     // Idle bob animation for when game is not active
-    idleBob(now, baseY, unit) {
+    idleBob(now, baseX, baseY, unit) {
         const bobSpeed = 0.003;
         const bobPhase = now * bobSpeed;
         const bobAmt = unit * 4;
+        
+        this.x = baseX;
+        const oldY = this.y;
         this.y = baseY + Math.sin(bobPhase) * bobAmt;
+        
+        // Use the vertical movement to drive the eye direction
+        const dy = this.y - oldY;
+        const lookDist = Math.min(Math.abs(dy * 10) / unit, 1) * (2.4 * unit);
+        const lookAngle = dy >= 0 ? Math.PI / 2 : -Math.PI / 2;
+
+        // Smooth interpolation for eye movement
+        this.eyeLookX += (0 - this.eyeLookX) * 0.1; // Centered horizontally
+        this.eyeLookY += (Math.sin(lookAngle) * lookDist - this.eyeLookY) * 0.1;
     }
 
     draw(ctx, sprites, unit, now) {
