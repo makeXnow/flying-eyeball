@@ -18,10 +18,10 @@ export const REWARD_DATA = {
 // emoji: enemy type, firstPts: score threshold to start spawning, min/max: spawn interval in seconds
 export const ENEMY_CONFIG = [
     { emoji: '🪰', firstPts: 0,   min: 3, max: 6,  size: 3,   speed: 0.3 },
-    { emoji: '🐝', firstPts: 12,  min: 5, max: 10, size: 3.6, speed: 0.4 },
+    { emoji: '🐝', firstPts: 1,   min: 5, max: 7,  size: 3.6, speed: 0.1 },
     { emoji: '🪲', firstPts: 25,  min: 3, max: 12, size: 3.6, speed: 0.0025 },
-    { emoji: '🐜', firstPts: 50,  min: 7, max: 15, size: 1.8, speed: 0.166, groupMin: 3, groupMax: 7, groupGap: 20 },
-    { emoji: '🕷️', firstPts: 100, min: 2, max: 5,  size: 4.8, speed: 0 },
+    { emoji: '🐜', firstPts: 50,  min: 7, max: 10, size: 1.8, speed: 0.166, groupMin: 3, groupMax: 7, groupGap: 20 },
+    { emoji: '🕷️', firstPts: 100, min: 2, max: 7,  size: 4.8, speed: 0 },
     { emoji: '🪳', firstPts: 150, min: 2, max: 4,  size: 3,   speed: 0.5 }
 ];
 

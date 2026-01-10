@@ -6,36 +6,56 @@ export class Bee extends BaseEnemy {
         const config = ENEMY_CONFIG.find(c => c.emoji === '🐝');
         const side = Math.random() < 0.5 ? 'left' : 'right';
         const startX = side === 'left' ? -10 * unit : width + 10 * unit;
+        const startY = Math.random() * height;
+        const startAngle = side === 'left' ? 0 : Math.PI;
         
         super({
             emoji: '🐝',
             x: startX,
-            y: Math.random() * height,
+            y: startY,
             size: config.size,
             speed: config.speed * unit,
             orient: 'left'
         });
-        
-        this.horizontalDir = side === 'left' ? 1 : -1;
-        this.vx = this.horizontalDir * this.speed;
-        this.isGoingUp = Math.random() < 0.5;
-        this.verticalSpeed = 0;
+
+        this.angle = startAngle;
+        this.vx = Math.cos(this.angle) * this.speed;
+        this.vy = Math.sin(this.angle) * this.speed;
+        this.distTraveled = 0;
+        this.nextTurnAt = (Math.random() * 40 + 60) * unit;
+        this.targetAngle = this.angle;
+        this.isRotating = false;
+        this.rotationSpeed = 0.02;
+        this.lastTurnDir = Math.random() < 0.5 ? 1 : -1;
     }
 
     update(now, width, height, unit) {
-        // Randomly change vertical direction
-        if (Math.random() < 0.02) {
-            this.isGoingUp = !this.isGoingUp;
+        if (this.isRotating) {
+            let diff = this.targetAngle - this.angle;
+            while (diff > Math.PI) diff -= Math.PI * 2;
+            while (diff < -Math.PI) diff += Math.PI * 2;
+            
+            if (Math.abs(diff) < this.rotationSpeed) {
+                this.angle = this.targetAngle;
+                this.isRotating = false;
+                this.distTraveled = 0;
+                this.nextTurnAt = (Math.random() * 40 + 60) * unit;
+            } else {
+                this.angle += Math.sign(diff) * this.rotationSpeed;
+            }
+            this.vx = Math.cos(this.angle) * this.speed;
+            this.vy = Math.sin(this.angle) * this.speed;
+            this.x += this.vx;
+            this.y += this.vy;
+        } else {
+            super.update(now, width, height, unit);
+            this.distTraveled += this.speed;
+            if (this.distTraveled >= this.nextTurnAt) {
+                this.isRotating = true;
+                this.lastTurnDir *= -1;
+                const turnAmount = (Math.random() * 10 + 10) * Math.PI / 180;
+                this.targetAngle = this.angle + (turnAmount * this.lastTurnDir);
+            }
         }
-        
-        // Target vertical speed (up is faster than down)
-        const targetVerticalSpeed = this.isGoingUp ? -5 * (unit * 0.05) : 3 * (unit * 0.05);
-        
-        // Smooth transition
-        this.verticalSpeed += (targetVerticalSpeed - this.verticalSpeed) * 0.1;
-        
-        this.x += this.vx;
-        this.vy = this.verticalSpeed; // Set vy for BaseEnemy.draw to handle rotation
-        this.y += this.vy;
     }
 }
