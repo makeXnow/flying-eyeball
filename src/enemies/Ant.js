@@ -1,10 +1,12 @@
 import { BaseEnemy } from './BaseEnemy.js';
+import { ENEMY_CONFIG } from '../core/constants.js';
 
 export class Ant extends BaseEnemy {
     constructor(x, y, unit, leader = null, offset = 0) {
-        // Speed is 3x slower than roach (0.5 / 3 = 0.166)
-        const antSpeed = 0.166 * unit;
-        super({ emoji: '🐜', x, y, size: 1.8, speed: antSpeed, orient: 'left' });
+        const config = ENEMY_CONFIG.find(c => c.emoji === '🐜');
+        // Speed is 3x slower than roach
+        const antSpeed = config.speed * unit;
+        super({ emoji: '🐜', x, y, size: config.size, speed: antSpeed, orient: 'left' });
         this.canEatRewards = true; this.leader = leader; this.offset = offset; this.history = [];
         
         if (!leader) {

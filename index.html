@@ -159,6 +159,26 @@
 </div>
 
 <script>
+    // --- GAME CONFIG ---
+    const TEST_ENEMY = null; // Normal Mode (Set to emoji like '🐜' for Tester Mode)
+
+    const ENEMY_CONFIG = [
+        { emoji: '🪰', firstPts: 0,   min: 3, max: 6,  size: 3,   speed: 0.3 },
+        { emoji: '🐝', firstPts: 12,  min: 5, max: 10, size: 3.6, speed: 0.4 },
+        { emoji: '🪲', firstPts: 25,  min: 3, max: 12, size: 3.6, speed: 0.0025 },
+        { emoji: '🐜', firstPts: 50,  min: 7, max: 15, size: 1.8, speed: 0.166, groupMin: 3, groupMax: 7, groupGap: 20 },
+        { emoji: '🕷️', firstPts: 100, min: 2, max: 5,  size: 4.8, speed: 0 },
+        { emoji: '🪳', firstPts: 150, min: 2, max: 4,  size: 3,   speed: 0.5 }
+    ];
+
+    const REWARD_DATA = { 
+        '🫐': { pts: 1, min: 1, max: 3, size: 3.6, color: '#3b82f6' }, 
+        '🍐': { pts: 3, min: 5, max: 8, size: 6, color: '#84cc16' }, 
+        '🍋': { pts: 7, min: 10, max: 20, size: 8.4, color: '#eab308' }, 
+        '🍊': { pts: 12, min: 20, max: 30, size: 4.8, color: '#f97316' }, 
+        '🍒': { pts: 25, min: 30, max: 40, size: 4.8, color: '#ef4444' } 
+    };
+
     // --- ENEMY CLASSES ---
     class BaseEnemy {
         constructor(config) {
@@ -172,13 +192,12 @@
             if (this.orient === 'up') {
                 ctx.rotate(Math.atan2(this.vy, this.vx) + Math.PI / 2);
             } else if (this.orient === 'left') {
-                // Left-oriented sprites face left by default.
                 const angle = Math.atan2(this.vy, this.vx);
                 if (Math.abs(angle) > Math.PI / 2) {
-                    // Moving Left-ish
+                    // Moving Left-ish: rotate so it stays facing left
                     ctx.rotate(angle + Math.PI);
                 } else {
-                    // Moving Right-ish: rotate and flip to stay right-side up
+                    // Moving Right-ish: rotate and flip horizontally to face right
                     ctx.rotate(angle);
                     ctx.scale(-1, 1);
                 }
@@ -194,7 +213,8 @@
 
     class Fly extends BaseEnemy {
         constructor(x, y, angle, unit) {
-            super({ emoji: '🪰', x, y, angle, size: 3, speed: 0.3 * unit, orient: 'up' });
+            const config = ENEMY_CONFIG.find(c => c.emoji === '🪰');
+            super({ emoji: '🪰', x, y, angle, size: config.size, speed: config.speed * unit, orient: 'up' });
             this.vx = Math.cos(angle) * this.speed; this.vy = Math.sin(angle) * this.speed;
             this.distTraveled = 0; this.nextTurnAt = (Math.random() * 30 + 20) * unit;
             this.targetAngle = angle; this.isRotating = false; this.rotationSpeed = 0.03;
@@ -215,13 +235,14 @@
 
     class Beetle extends BaseEnemy {
         constructor(width, height, unit) {
+            const config = ENEMY_CONFIG.find(c => c.emoji === '🪲');
             const diameter = (Math.random() * 100 + 100) * unit; const radius = diameter / 2; const penetration = radius * (Math.random() * 0.45 + 0.05);
             const side = Math.floor(Math.random() * 4); let centerX, centerY;
             if (side === 0) { centerX = Math.random() * width; centerY = -(radius - penetration); } 
             else if (side === 1) { centerX = width + (radius - penetration); centerY = Math.random() * height; }
             else if (side === 2) { centerX = Math.random() * width; centerY = height + (radius - penetration); } 
             else { centerX = - (radius - penetration); centerY = Math.random() * height; }
-            super({ emoji: '🪲', x: 0, y: 0, size: 3.6, speed: 0.0025, orient: 'up' });
+            super({ emoji: '🪲', x: 0, y: 0, size: config.size, speed: config.speed, orient: 'up' });
             this.centerX = centerX; this.centerY = centerY; this.radius = radius;
             const angleToCenter = Math.atan2((height/2) - centerY, (width/2) - centerX); const spread = Math.acos((radius - penetration) / radius);
             const angularBuffer = (this.size * unit * 2) / radius;
@@ -239,8 +260,9 @@
 
     class Bee extends BaseEnemy {
         constructor(width, height, unit) {
+            const config = ENEMY_CONFIG.find(c => c.emoji === '🐝');
             const side = Math.random() < 0.5 ? 'left' : 'right'; const startX = side === 'left' ? -10 * unit : width + 10 * unit;
-            super({ emoji: '🐝', x: startX, y: Math.random() * height, size: 3.6, speed: 0.4 * unit, orient: 'left' });
+            super({ emoji: '🐝', x: startX, y: Math.random() * height, size: config.size, speed: config.speed * unit, orient: 'left' });
             this.horizontalDir = side === 'left' ? 1 : -1; this.vx = this.horizontalDir * this.speed; this.isGoingUp = Math.random() < 0.5; this.verticalSpeed = 0;
         }
         update(now, width, height, unit) {
@@ -255,9 +277,10 @@
 
     class Ant extends BaseEnemy {
         constructor(x, y, unit, leader = null, offset = 0) {
-            // Speed is 3x slower than roach (0.5 / 3 = 0.166)
-            const antSpeed = 0.166 * unit;
-            super({ emoji: '🐜', x, y, size: 1.8, speed: antSpeed, orient: 'left' });
+            const config = ENEMY_CONFIG.find(c => c.emoji === '🐜');
+            // Speed is 3x slower than roach
+            const antSpeed = config.speed * unit;
+            super({ emoji: '🐜', x, y, size: config.size, speed: antSpeed, orient: 'left' });
             this.canEatRewards = true; this.leader = leader; this.offset = offset; this.history = [];
             
             if (!leader) {
@@ -265,7 +288,7 @@
                 this.vx = Math.cos(this.angle) * this.speed;
                 this.vy = Math.sin(this.angle) * this.speed;
                 this.distTraveled = 0;
-                // Paths are 2x bigger than roach (original 15+5 * 2 = 30+10)
+                // Paths are 2x bigger than roach
                 this.nextTurnAt = (Math.random() * 30 + 10) * unit;
             }
         }
@@ -298,10 +321,11 @@
 
     class Spider extends BaseEnemy {
         constructor(width, height, unit) {
+            const config = ENEMY_CONFIG.find(c => c.emoji === '🕷️');
             const targetX = Math.random() * (width - 40 * unit) + 20 * unit;
             const targetY = Math.random() * (height - 40 * unit) + 20 * unit;
             const startY = -10 * unit;
-            super({ emoji: '🕷️', x: targetX, y: startY, size: 4.8, speed: 0, orient: 'up' });
+            super({ emoji: '🕷️', x: targetX, y: startY, size: config.size, speed: 0, orient: 'up' });
             
             this.targetX = targetX; this.targetY = targetY; this.startY = startY;
             this.peekY = height * 0.05;
@@ -353,7 +377,8 @@
 
     class Roach extends BaseEnemy {
         constructor(x, y, angle, unit) {
-            super({ emoji: '🪳', x, y, angle, size: 3, speed: 0.5 * unit, orient: 'up' });
+            const config = ENEMY_CONFIG.find(c => c.emoji === '🪳');
+            super({ emoji: '🪳', x, y, angle, size: config.size, speed: config.speed * unit, orient: 'up' });
             this.vx = Math.cos(angle) * this.speed; this.vy = Math.sin(angle) * this.speed;
             this.distTraveled = 0; this.nextTurnAt = (Math.random() * 15 + 5) * unit;
         }
@@ -367,24 +392,14 @@
         }
     }
 
-    const TEST_ENEMY = null; // Normal Mode
-
     class EnemyManager {
         constructor() {
             this.enemies = []; this.spawnTimers = {}; this.testerMode = TEST_ENEMY;
-            this.ENEMY_CONFIG = [
-                { emoji: '🪰', firstPts: 0, min: 3, max: 6 },
-                { emoji: '🐝', firstPts: 12, min: 5, max: 10 },
-                { emoji: '🪲', firstPts: 25, min: 3, max: 12 },
-                { emoji: '🐜', firstPts: 50, min: 7, max: 15 },
-                { emoji: '🕷️', firstPts: 100, min: 2, max: 5 },
-                { emoji: '🪳', firstPts: 150, min: 2, max: 4 }
-            ];
         }
         reset(now, startTime) { 
             this.enemies = []; 
             this.spawnTimers = {}; 
-            this.ENEMY_CONFIG.forEach((c, i) => {
+            ENEMY_CONFIG.forEach((c, i) => {
                 // TESTER MODE: If this emoji is the test target, set timer to spawn immediately
                 if (this.testerMode && c.emoji === this.testerMode) {
                     this.spawnTimers[i] = now;
@@ -394,7 +409,7 @@
             });
         }
         schedule(i, now, startTime) {
-            const c = this.ENEMY_CONFIG[i]; 
+            const c = ENEMY_CONFIG[i]; 
             const isTest = this.testerMode !== null;
             // TESTER MODE: Test target spawns every 3 seconds
             const randomWait = (isTest && c.emoji === this.testerMode)
@@ -403,7 +418,7 @@
             this.spawnTimers[i] = now + randomWait;
         }
         spawn(i, width, height, unit) {
-            const c = this.ENEMY_CONFIG[i]; 
+            const c = ENEMY_CONFIG[i]; 
             // TESTER MODE: Only spawn the test target if mode is active
             if (this.testerMode && c.emoji !== this.testerMode) return;
             
@@ -411,12 +426,14 @@
             if (side === 0) { x = Math.random() * width; y = -margin; } else if (side === 1) { x = width + margin; y = Math.random() * height; }
             else if (side === 2) { x = Math.random() * width; y = height + margin; } else { x = -margin; y = Math.random() * height; }
             angle = Math.atan2((height / 2) - y, (width / 2) - x) + (Math.random() * 0.5 - 0.25);
+            
             if (c.emoji === '🪰') this.enemies.push(new Fly(x, y, angle, unit));
             else if (c.emoji === '🪲') this.enemies.push(new Beetle(width, height, unit));
             else if (c.emoji === '🐝') this.enemies.push(new Bee(width, height, unit));
             else if (c.emoji === '🐜') {
                 const leader = new Ant(x, y, unit); this.enemies.push(leader);
-                const count = Math.floor(Math.random() * 5) + 3; for (let j = 1; j < count; j++) this.enemies.push(new Ant(x, y, unit, leader, j * 20));
+                const count = Math.floor(Math.random() * (c.groupMax - c.groupMin + 1)) + c.groupMin; 
+                for (let j = 1; j < count; j++) this.enemies.push(new Ant(x, y, unit, leader, j * c.groupGap));
             } else if (c.emoji === '🕷️') this.enemies.push(new Spider(width, height, unit));
             else if (c.emoji === '🪳') this.enemies.push(new Roach(x, y, angle, unit));
         }
@@ -425,7 +442,7 @@
             // TESTER MODE: Skip 1s grace period for test targets
             if (!isTest && now - start < 1000) return; 
 
-            this.ENEMY_CONFIG.forEach((c, i) => { 
+            ENEMY_CONFIG.forEach((c, i) => { 
                 // TESTER MODE: Test targets ignore score requirements
                 const scoreMet = (isTest && c.emoji === this.testerMode) ? true : (currentScore >= c.firstPts);
                 if (scoreMet && now >= this.spawnTimers[i]) { this.spawn(i, w, h, u); this.schedule(i, now, start); } 
@@ -445,7 +462,6 @@
     const SPRITE_RESOLUTION = 256; const sprites = {};
     const enemyManager = new EnemyManager();
     const DEATH_MESSAGES = ["Vision Lost!", "Eye Contact Broken!", "You Blinked!", "Blinked Too Soon!", "Lost Sight!", "Eyes Up Next Time!", "Visual Feed Lost!", "Target Out of Sight!", "Retinal Error!", "Nice Try, Big Eye!"];
-    const REWARD_DATA = { '🫐': { pts: 1, min: 1, max: 3, size: 3.6, color: '#3b82f6' }, '🍐': { pts: 3, min: 5, max: 8, size: 6, color: '#84cc16' }, '🍋': { pts: 7, min: 10, max: 20, size: 8.4, color: '#eab308' }, '🍊': { pts: 12, min: 20, max: 30, size: 4.8, color: '#f97316' }, '🍒': { pts: 25, min: 30, max: 40, size: 4.8, color: '#ef4444' } };
 
     let hero = { x: 0, y: 0, vx: 0, vy: 0, colorBursts: [], eyeLookX: 0, eyeLookY: 0, baseSpeed: 5 };
     let rewards = [], floatingTexts = [], spawnTimers = { rewards: {} };
@@ -488,7 +504,7 @@
     window.updateRestartButton = () => { const inputField = document.getElementById('high-score-name'); restartBtn.innerText = (inputField && inputField.value.trim().length > 0) ? "Save & Play Again" : "Play Again"; };
     function handleRestart() { const nameInput = document.getElementById('high-score-name'); if (nameInput && nameInput.value.trim().length > 0) { const name = nameInput.value.trim(); lastPlayerName = name; saveScore(name, score); } resetGame(); }
     function preRenderSprites() {
-        const emojis = new Set(Object.keys(REWARD_DATA)); enemyManager.ENEMY_CONFIG.forEach(e => emojis.add(e.emoji)); emojis.add('🪽');
+        const emojis = new Set(Object.keys(REWARD_DATA)); ENEMY_CONFIG.forEach(e => emojis.add(e.emoji)); emojis.add('🪽');
         emojis.forEach(emoji => { const off = document.createElement('canvas'); off.width = off.height = SPRITE_RESOLUTION; const octx = off.getContext('2d'); octx.font = `${SPRITE_RESOLUTION * 0.8}px serif`; octx.textAlign = 'center'; octx.textBaseline = 'middle'; octx.fillText(emoji, SPRITE_RESOLUTION / 2, SPRITE_RESOLUTION / 2); sprites[emoji] = off; });
     }
     function getGameTime() { return isWindowVisible ? Date.now() - totalPauseTime : lastPauseStarted - totalPauseTime; }

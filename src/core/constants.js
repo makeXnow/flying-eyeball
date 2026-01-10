@@ -4,20 +4,6 @@ export const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz4ysJ9aIVSl1
 // Sprite rendering resolution
 export const SPRITE_RESOLUTION = 256;
 
-// Game over messages
-export const DEATH_MESSAGES = [
-    "Vision Lost!",
-    "Eye Contact Broken!",
-    "You Blinked!",
-    "Blinked Too Soon!",
-    "Lost Sight!",
-    "Eyes Up Next Time!",
-    "Visual Feed Lost!",
-    "Target Out of Sight!",
-    "Retinal Error!",
-    "Nice Try, Big Eye!"
-];
-
 // Reward configuration
 // pts: points earned, min/max: spawn interval in seconds, size: visual size multiplier, color: iris burst color
 export const REWARD_DATA = {
@@ -31,12 +17,12 @@ export const REWARD_DATA = {
 // Enemy configuration
 // emoji: enemy type, firstPts: score threshold to start spawning, min/max: spawn interval in seconds
 export const ENEMY_CONFIG = [
-    { emoji: '🪰', firstPts: 0, min: 3, max: 6 },
-    { emoji: '🐝', firstPts: 12, min: 5, max: 10 },
-    { emoji: '🪲', firstPts: 25, min: 3, max: 12 },
-    { emoji: '🐜', firstPts: 50, min: 7, max: 15 },
-    { emoji: '🕷️', firstPts: 100, min: 2, max: 5 },
-    { emoji: '🪳', firstPts: 150, min: 2, max: 4 }
+    { emoji: '🪰', firstPts: 0,   min: 3, max: 6,  size: 3,   speed: 0.3 },
+    { emoji: '🐝', firstPts: 12,  min: 5, max: 10, size: 3.6, speed: 0.4 },
+    { emoji: '🪲', firstPts: 25,  min: 3, max: 12, size: 3.6, speed: 0.0025 },
+    { emoji: '🐜', firstPts: 50,  min: 7, max: 15, size: 1.8, speed: 0.166, groupMin: 3, groupMax: 7, groupGap: 20 },
+    { emoji: '🕷️', firstPts: 100, min: 2, max: 5,  size: 4.8, speed: 0 },
+    { emoji: '🪳', firstPts: 150, min: 2, max: 4,  size: 3,   speed: 0.5 }
 ];
 
 // Hero constants

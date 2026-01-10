@@ -85,9 +85,9 @@ export class EnemyManager {
                 // Spawn a group of ants
                 const leader = new Ant(x, y, unit);
                 this.enemies.push(leader);
-                const count = Math.floor(Math.random() * 5) + 3; // 3-7 ants
+                const count = Math.floor(Math.random() * (config.groupMax - config.groupMin + 1)) + config.groupMin;
                 for (let i = 1; i < count; i++) {
-                    this.enemies.push(new Ant(x, y, unit, leader, i * 20));
+                    this.enemies.push(new Ant(x, y, unit, leader, i * config.groupGap));
                 }
                 break;
             case '🕷️':

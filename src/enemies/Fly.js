@@ -1,12 +1,14 @@
 import { BaseEnemy } from './BaseEnemy.js';
+import { ENEMY_CONFIG } from '../core/constants.js';
 
 export class Fly extends BaseEnemy {
     constructor(x, y, angle, unit) {
+        const config = ENEMY_CONFIG.find(c => c.emoji === '🪰');
         super({
             emoji: '🪰',
             x, y, angle,
-            size: 3,
-            speed: 0.3 * unit,
+            size: config.size,
+            speed: config.speed * unit,
             orient: 'up'
         });
         this.vx = Math.cos(angle) * this.speed;

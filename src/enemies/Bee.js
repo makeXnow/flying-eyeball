@@ -1,7 +1,9 @@
 import { BaseEnemy } from './BaseEnemy.js';
+import { ENEMY_CONFIG } from '../core/constants.js';
 
 export class Bee extends BaseEnemy {
     constructor(width, height, unit) {
+        const config = ENEMY_CONFIG.find(c => c.emoji === '🐝');
         const side = Math.random() < 0.5 ? 'left' : 'right';
         const startX = side === 'left' ? -10 * unit : width + 10 * unit;
         
@@ -9,8 +11,8 @@ export class Bee extends BaseEnemy {
             emoji: '🐝',
             x: startX,
             y: Math.random() * height,
-            size: 3.6,
-            speed: 0.4 * unit,
+            size: config.size,
+            speed: config.speed * unit,
             orient: 'left'
         });
         

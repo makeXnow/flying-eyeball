@@ -1,5 +1,5 @@
-import { DEATH_MESSAGES } from '../core/constants.js';
 import { Leaderboard } from './Leaderboard.js';
+import { ENDGAME_MESSAGES } from '../core/endgameMessages.js';
 
 export class UIManager {
     constructor() {
@@ -34,7 +34,7 @@ export class UIManager {
 
     showGameOver(score) {
         // Set random death message
-        const message = DEATH_MESSAGES[Math.floor(Math.random() * DEATH_MESSAGES.length)];
+        const message = ENDGAME_MESSAGES[Math.floor(Math.random() * ENDGAME_MESSAGES.length)];
         this.gameOverTitle.innerText = message;
         
         // Update final score

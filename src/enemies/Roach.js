@@ -1,14 +1,16 @@
 import { BaseEnemy } from './BaseEnemy.js';
+import { ENEMY_CONFIG } from '../core/constants.js';
 
 export class Roach extends BaseEnemy {
     constructor(x, y, angle, unit) {
+        const config = ENEMY_CONFIG.find(c => c.emoji === '🪳');
         super({
             emoji: '🪳',
             x: x,
             y: y,
             angle: angle,
-            size: 3,
-            speed: 0.5 * unit,
+            size: config.size,
+            speed: config.speed * unit,
             orient: 'up'
         });
         this.vx = Math.cos(angle) * this.speed;
