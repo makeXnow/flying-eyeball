@@ -5,10 +5,12 @@ export class Bee extends BaseEnemy {
     constructor(width, height, unit) {
         const activeConfig = window.ENEMY_CONFIG || ENEMY_CONFIG;
         const config = activeConfig.find(c => c.emoji === '🐝');
-        const side = Math.random() < 0.5 ? 'left' : 'right';
-        const startX = side === 'left' ? -10 * unit : width + 10 * unit;
+        
+        const fromLeft = Math.random() < 0.5;
+        const startX = fromLeft ? -20 * unit : width + 20 * unit;
+        const targetX = fromLeft ? width + 20 * unit : -20 * unit;
         const startY = Math.random() * height;
-        const startAngle = side === 'left' ? 0 : Math.PI;
+        const targetY = Math.random() * height;
         
         super({
             emoji: '🐝',
@@ -19,44 +21,70 @@ export class Bee extends BaseEnemy {
             orient: 'left'
         });
 
-        this.angle = startAngle;
-        this.vx = Math.cos(this.angle) * this.speed;
-        this.vy = Math.sin(this.angle) * this.speed;
-        this.distTraveled = 0;
-        this.nextTurnAt = (Math.random() * 40 + 60) * unit;
-        this.targetAngle = this.angle;
-        this.isRotating = false;
-        this.rotationSpeed = 0.02;
-        this.lastTurnDir = Math.random() < 0.5 ? 1 : -1;
+        this.startX = startX;
+        this.targetX = targetX;
+        this.startY = startY;
+        this.targetY = targetY;
+        
+        this.totalDist = Math.abs(targetX - startX);
+        this.traveled = 0;
+        
+        // Sine wave properties
+        this.bobPhase = Math.random() * Math.PI * 2;
+        this.bobSpeed = 0.025 + Math.random() * 0.025;
+        // Initial amplitude: 0.25x to 0.5x of original 15 units
+        this.bobAmplitude = (15 * unit) * (0.25 + Math.random() * 0.25);
     }
 
     update(now, width, height, unit) {
-        if (this.isRotating) {
-            let diff = this.targetAngle - this.angle;
-            while (diff > Math.PI) diff -= Math.PI * 2;
-            while (diff < -Math.PI) diff += Math.PI * 2;
-            
-            if (Math.abs(diff) < this.rotationSpeed) {
-                this.angle = this.targetAngle;
-                this.isRotating = false;
-                this.distTraveled = 0;
-                this.nextTurnAt = (Math.random() * 40 + 60) * unit;
-            } else {
-                this.angle += Math.sign(diff) * this.rotationSpeed;
-            }
-            this.vx = Math.cos(this.angle) * this.speed;
-            this.vy = Math.sin(this.angle) * this.speed;
-            this.x += this.vx;
-            this.y += this.vy;
-        } else {
-            super.update(now, width, height, unit);
-            this.distTraveled += this.speed;
-            if (this.distTraveled >= this.nextTurnAt) {
-                this.isRotating = true;
-                this.lastTurnDir *= -1;
-                const turnAmount = (Math.random() * 10 + 10) * Math.PI / 180;
-                this.targetAngle = this.angle + (turnAmount * this.lastTurnDir);
-            }
+        // Move horizontally
+        const dir = this.targetX > this.startX ? 1 : -1;
+        const vx = dir * this.speed;
+        this.x += vx;
+        this.traveled += this.speed;
+        
+        // Calculate progress (0 to 1)
+        const progress = Math.min(1, this.traveled / this.totalDist);
+        
+        // Calculate base Y position (diagonal line from start to target)
+        const baseY = this.startY + (this.targetY - this.startY) * progress;
+        
+        // Add vertical sine wave bobbing
+        const oldPhase = this.bobPhase;
+        this.bobPhase += this.bobSpeed;
+        
+        // After each peak or valley (when we cross the center line), pick a new random height
+        if (Math.floor(oldPhase / Math.PI) !== Math.floor(this.bobPhase / Math.PI)) {
+            const maxAmp = 15 * unit; // original base
+            this.bobAmplitude = maxAmp * (0.25 + Math.random() * 0.25);
         }
+        
+        this.y = baseY + Math.sin(this.bobPhase) * this.bobAmplitude;
+        
+        this.vx = vx;
+        this.vy = (this.y - baseY); 
+
+        if (progress >= 1) {
+            this.isDead = true;
+        }
+    }
+
+    draw(ctx, sprites, unit) {
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        
+        // Face strictly left or right based on destination
+        if (this.targetX > this.startX) {
+            // Moving Right: flip horizontally (sprite emoji 🐝 faces left by default)
+            ctx.scale(-1, 1);
+        }
+        // Moving Left: no scale/rotation needed as emoji faces left
+        
+        const sprite = sprites[this.emoji];
+        if (sprite) {
+            const d = this.size * unit * 2;
+            ctx.drawImage(sprite, -d / 2, -d / 2, d, d);
+        }
+        ctx.restore();
     }
 }

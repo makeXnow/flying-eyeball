@@ -7,23 +7,29 @@ export class Beetle extends BaseEnemy {
         const config = activeConfig.find(c => c.emoji === '🪲');
         const diameter = (Math.random() * 100 + 100) * unit;
         const radius = diameter / 2;
-        const penetration = radius * (Math.random() * 0.45 + 0.05);
+        // Increased penetration so they are more visible on their arc
+        const penetration = radius * (Math.random() * 0.3 + 0.2);
         
         const side = Math.floor(Math.random() * 4);
         let centerX, centerY;
+        let baseAngle;
         
         if (side === 0) { // Top
             centerX = Math.random() * width;
             centerY = -(radius - penetration);
+            baseAngle = Math.PI / 2;
         } else if (side === 1) { // Right
             centerX = width + (radius - penetration);
             centerY = Math.random() * height;
+            baseAngle = Math.PI;
         } else if (side === 2) { // Bottom
             centerX = Math.random() * width;
             centerY = height + (radius - penetration);
+            baseAngle = -Math.PI / 2;
         } else { // Left
             centerX = -(radius - penetration);
             centerY = Math.random() * height;
+            baseAngle = 0;
         }
 
         super({
@@ -37,16 +43,26 @@ export class Beetle extends BaseEnemy {
         this.centerX = centerX;
         this.centerY = centerY;
         this.radius = radius;
+        this.reverse = Math.random() < 0.5;
         
         // Calculate arc angles based on penetration
-        const angleToCenter = Math.atan2((height / 2) - centerY, (width / 2) - centerX);
         const spread = Math.acos((radius - penetration) / radius);
-        const angularBuffer = (this.size * unit * 2) / radius;
         
-        this.startAngle = angleToCenter - spread - angularBuffer;
-        this.endAngle = angleToCenter + spread + angularBuffer;
-        this.reverse = Math.random() < 0.5;
-        this.angularPos = this.reverse ? this.endAngle : this.startAngle;
+        // Asymmetrical buffers: start close to edge, end far away
+        const startBuffer = (this.size * unit * 1.2) / radius;
+        const endBuffer = (this.size * unit * 4.0) / radius;
+        
+        if (this.reverse) {
+            // Moving from endAngle to startAngle
+            this.startAngle = baseAngle - spread - endBuffer; 
+            this.endAngle = baseAngle + spread + startBuffer;
+            this.angularPos = this.endAngle;
+        } else {
+            // Moving from startAngle to endAngle
+            this.startAngle = baseAngle - spread - startBuffer;
+            this.endAngle = baseAngle + spread + endBuffer;
+            this.angularPos = this.startAngle;
+        }
         this.wavePhase = 0;
         
         this.updatePos(unit);

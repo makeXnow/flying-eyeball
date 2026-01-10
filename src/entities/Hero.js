@@ -1,4 +1,10 @@
-import { HERO_RADIUS, HERO_BASE_SPEED, JOYSTICK_RADIUS } from '../core/constants.js';
+import { 
+    HERO_RADIUS, 
+    HERO_BASE_SPEED, 
+    JOYSTICK_RADIUS,
+    HERO_FLAP_UP_MAX,
+    HERO_FLAP_DOWN_MIN
+} from '../core/constants.js';
 
 export class Hero {
     constructor(x, y) {
@@ -10,6 +16,8 @@ export class Hero {
         this.eyeLookX = 0;
         this.eyeLookY = 0;
         this.baseSpeed = HERO_BASE_SPEED;
+        this.flapPhase = 0;
+        this.lastFlapUpdate = 0;
     }
 
     reset(x, y) {
@@ -20,6 +28,8 @@ export class Hero {
         this.colorBursts = [];
         this.eyeLookX = 0;
         this.eyeLookY = 0;
+        this.flapPhase = 0;
+        this.lastFlapUpdate = 0;
     }
 
     update(input, width, height, unit) {
@@ -69,9 +79,10 @@ export class Hero {
         this.x = baseX;
         const oldY = this.y;
         this.y = baseY + Math.sin(bobPhase) * bobAmt;
+        this.vy = this.y - oldY;
         
         // Use the vertical movement to drive the eye direction
-        const dy = this.y - oldY;
+        const dy = this.vy;
         const lookDist = Math.min(Math.abs(dy * 10) / unit, 1) * (2.4 * unit);
         const lookAngle = dy >= 0 ? Math.PI / 2 : -Math.PI / 2;
 
@@ -81,6 +92,30 @@ export class Hero {
     }
 
     draw(ctx, sprites, unit, now) {
+        // Update flap phase based on vertical velocity
+        if (this.lastFlapUpdate === 0) {
+            this.lastFlapUpdate = now;
+        }
+        const dt = now - this.lastFlapUpdate;
+        this.lastFlapUpdate = now;
+
+        const maxSpeed = this.baseSpeed;
+        let multiplier;
+        if (this.vy < -0.01) {
+            // Scale from 1.0 baseline up to HERO_FLAP_UP_MAX at max speed
+            multiplier = 1.0 + (Math.abs(this.vy) / maxSpeed) * (HERO_FLAP_UP_MAX - 1.0);
+        } else if (this.vy > 0.01) {
+            // Scale from 1.0 baseline down to HERO_FLAP_DOWN_MIN at max speed
+            multiplier = 1.0 - (this.vy / maxSpeed) * (1.0 - HERO_FLAP_DOWN_MIN);
+        } else {
+            multiplier = 1.0;
+        }
+        
+        // Clamp multiplier to requested bounds
+        multiplier = Math.max(HERO_FLAP_DOWN_MIN, Math.min(HERO_FLAP_UP_MAX, multiplier));
+        
+        this.flapPhase = (this.flapPhase + dt * multiplier) % 600;
+
         ctx.save();
         ctx.translate(this.x, this.y);
 
@@ -89,10 +124,10 @@ export class Hero {
         const s2 = 1.6 * unit;
         const s6 = 4.8 * unit;
 
-        // Wing flap animation
-        const flapAngle = (now % 600 < 400) 
-            ? (now % 600 / 400) * (-30 * Math.PI / 180) 
-            : (1 - (now % 600 - 400) / 200) * (-30 * Math.PI / 180);
+        // Wing flap animation using accumulated phase
+        const flapAngle = (this.flapPhase < 400) 
+            ? (this.flapPhase / 400) * (-30 * Math.PI / 180) 
+            : (1 - (this.flapPhase - 400) / 200) * (-30 * Math.PI / 180);
 
         // Draw wings
         const wingSprite = sprites['🪽'];

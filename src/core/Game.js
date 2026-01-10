@@ -205,6 +205,10 @@ export class Game {
     }
 
     draw(now) {
+        // Update timer display
+        const elapsed = (this.gameActive && this.gameStartTime > 0) ? (now - this.gameStartTime) : 0;
+        this.uiManager.updateTimer(elapsed);
+
         let entityOpacity = 1;
         if (this.isGameOverAnimating) {
             entityOpacity = 1 - Math.min(1, (now - this.gameOverStartTime) / 800);

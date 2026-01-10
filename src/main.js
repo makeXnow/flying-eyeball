@@ -1,5 +1,7 @@
 import { Game } from './core/Game.js';
 
+let gameStarted = false;
+
 function hideSplashScreen() {
     const splash = document.getElementById('splash-screen');
     if (splash) {
@@ -14,15 +16,23 @@ function hideSplashScreen() {
 function startGame() {
     const splash = document.getElementById('splash-screen');
     
-    // If splash screen exists (initial load), show it for 1 second
+    // If splash screen exists (initial load), show it for 2 seconds
     if (splash) {
         const game = new Game();
         
-        // Wait 2 seconds, then hide splash and init game
-        setTimeout(() => {
+        const launchGame = () => {
+            if (gameStarted) return; // Prevent double init
+            gameStarted = true;
             hideSplashScreen();
             game.init();
-        }, 2000);
+        };
+        
+        // Click/tap to skip splash early
+        splash.addEventListener('click', launchGame);
+        splash.addEventListener('touchstart', launchGame);
+        
+        // Auto-launch after 2 seconds
+        setTimeout(launchGame, 2000);
     } else {
         // No splash (shouldn't happen, but fallback)
         const game = new Game();

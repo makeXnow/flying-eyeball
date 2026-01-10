@@ -104,6 +104,7 @@
             pointer-events: auto;
         }
         .txt-score { font-size: calc(var(--u) * 10); }
+        .txt-timer { font-size: calc(var(--u) * 5); }
         .txt-title { font-size: calc(var(--u) * 5.5); }
         .txt-score-label { font-size: calc(var(--u) * 5); }
         .txt-final-score { font-size: calc(var(--u) * 10); }
@@ -150,9 +151,22 @@
             pointer-events: none;
         }
         #splash-screen img {
-            max-width: 100%;
-            max-height: 100%;
+            width: 100%;
+            height: 100%;
             object-fit: contain;
+        }
+        
+        /* 
+           Apply 'cover' if within 15% of 16:9 (landscape) or 9:16 (portrait) aspect ratio.
+           - 16:9 range: 1.545 to 2.044
+           - 9:16 range: 0.489 to 0.647
+           Anything more than 15% deviation will use 'contain' (default).
+        */
+        @media (min-aspect-ratio: 1545/1000) and (max-aspect-ratio: 2044/1000),
+               (min-aspect-ratio: 489/1000) and (max-aspect-ratio: 647/1000) {
+            #splash-screen img {
+                object-fit: cover;
+            }
         }
     </style>
 </head>
@@ -164,12 +178,15 @@
     </div>
 
     <div id="game-container">
-        <div id="ui-layer">
-        <div id="dashboard-score" class="txt-score font-black text-black/25 text-left">
-            <span id="score-val">0</span>
+        <div id="ui-layer" class="flex justify-between items-start">
+            <div id="dashboard-score" class="txt-score font-black text-black/25">
+                <span id="score-val">0</span>
+            </div>
+            <div id="dashboard-timer" class="txt-timer text-black/25">
+                <span id="timer-val">0</span>
+            </div>
         </div>
-    </div>
-    <div id="joystick"><div id="joystick-knob"></div></div>
+        <div id="joystick"><div id="joystick-knob"></div></div>
     <canvas id="gameCanvas"></canvas>
     <div id="game-over" class="absolute flex-col items-center justify-end text-center" style="display: none; top: 18%; bottom: 8%; left: 0; right: 0; padding: calc(var(--u) * 4);">
         <h1 id="game-over-title" class="txt-title font-black text-blue-600 uppercase tracking-tight drop-shadow-sm" style="margin-bottom: calc(var(--u) * 3);">VISION LOST!</h1>

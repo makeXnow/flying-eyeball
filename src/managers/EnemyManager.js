@@ -1,4 +1,4 @@
-import { ENEMY_CONFIG, HERO_COLLISION_RADIUS, TEST_ENEMY, START_SPAWN, MAX_SPAWN, MAX_SPAWN_TIME } from '../core/constants.js';
+import { ENEMY_CONFIG, HERO_COLLISION_RADIUS, TEST_ENEMY, START_SPAWN, MAX_SPAWN, MAX_SPAWN_TIME, MAX_TOTAL_START, MAX_TOTAL, MAX_TOTAL_TIME } from '../core/constants.js';
 import { Fly } from '../enemies/Fly.js';
 import { Beetle } from '../enemies/Beetle.js';
 import { Bee } from '../enemies/Bee.js';
@@ -32,16 +32,37 @@ export class EnemyManager {
         return startSpawn - (startSpawn - maxSpawn) * progress;
     }
 
+    getMaxTotal(elapsed) {
+        // Use live values from window if available
+        const maxTotalStart = window.max_total_start !== undefined ? window.max_total_start : MAX_TOTAL_START;
+        const maxTotal = window.max_total !== undefined ? window.max_total : MAX_TOTAL;
+        const maxTotalTime = window.max_total_time !== undefined ? window.max_total_time : MAX_TOTAL_TIME;
+
+        // Ramp from maxTotalStart to maxTotal over maxTotalTime
+        const progress = Math.min(elapsed / (maxTotalTime * 1000), 1);
+        return maxTotalStart + (maxTotal - maxTotalStart) * progress;
+    }
+
     selectWeightedEnemy(currentScore) {
         const isTest = this.testerMode !== null;
         
         // Use live config from window if available, fallback to imported one
         const activeConfig = window.ENEMY_CONFIG || ENEMY_CONFIG;
         
-        // Filter available enemies based on score threshold
+        // Count current enemies by emoji
+        const counts = this.enemies.reduce((acc, enemy) => {
+            acc[enemy.emoji] = (acc[enemy.emoji] || 0) + 1;
+            return acc;
+        }, {});
+
+        // Filter available enemies based on score threshold and per-enemy max limit
         const available = activeConfig.filter((config) => {
             if (isTest) return config.emoji === this.testerMode;
-            return currentScore >= config.firstPts;
+            
+            const isScoreMet = currentScore >= config.firstPts;
+            const isUnderMax = config.max === undefined || (counts[config.emoji] || 0) < config.max;
+            
+            return isScoreMet && isUnderMax;
         });
 
         if (available.length === 0) return null;
@@ -115,20 +136,28 @@ export class EnemyManager {
     update(now, width, height, unit, gameStartTime, rewards, hero, onGameOver, currentScore) {
         if (!unit || unit <= 0) return;
 
+        const elapsed = now - gameStartTime;
+        const currentMaxTotal = this.getMaxTotal(elapsed);
+
         // Check if it's time to spawn (can spawn multiple to catch up)
         let catchUpLimit = 0;
         while (now >= this.nextSpawnTime && catchUpLimit < 5) {
-            const enemyIndex = this.selectWeightedEnemy(currentScore);
-            if (enemyIndex !== null) {
-                this.spawn(enemyIndex, width, height, unit);
-                
-                const elapsed = now - gameStartTime;
-                const interval = this.getSpawnInterval(elapsed);
-                this.nextSpawnTime += interval * 1000;
-                catchUpLimit++;
+            // Only spawn if we are under the dynamic limit
+            if (this.enemies.length < currentMaxTotal) {
+                const enemyIndex = this.selectWeightedEnemy(currentScore);
+                if (enemyIndex !== null) {
+                    this.spawn(enemyIndex, width, height, unit);
+                    
+                    const interval = this.getSpawnInterval(elapsed);
+                    this.nextSpawnTime += interval * 1000;
+                    catchUpLimit++;
+                } else {
+                    // If no enemy is available yet, check again soon
+                    this.nextSpawnTime = now + 500;
+                    break;
+                }
             } else {
-                // If no enemy is available yet, check again soon
-                this.nextSpawnTime = now + 500;
+                // If we're at the limit, wait until an enemy dies or the limit increases
                 break;
             }
         }
