@@ -8,22 +8,14 @@ import { UIManager } from '../ui/UIManager.js';
 
 export class Game {
     constructor() {
-        // Get DOM elements
-        this.canvas = document.getElementById('gameCanvas');
-        this.joystickEl = document.getElementById('joystick');
-        this.knobEl = document.getElementById('joystick-knob');
-
-        // Initialize managers
-        this.renderer = new Renderer(this.canvas);
-        this.inputManager = new InputManager(this.canvas, this.joystickEl, this.knobEl);
+        // Managers (initialized in init once DOM is ready)
+        this.renderer = null;
+        this.inputManager = null;
         this.enemyManager = new EnemyManager();
         this.rewardManager = new RewardManager();
         this.uiManager = new UIManager();
 
-        // Create hero
         this.hero = null;
-
-        // Game state
         this.gameActive = true;
         this.isGameOverAnimating = false;
         this.gameOverStartTime = 0;
@@ -33,13 +25,21 @@ export class Game {
         this.lastPauseStarted = 0;
         this.isWindowVisible = true;
 
-        // Bind methods
         this.gameLoop = this.gameLoop.bind(this);
         this.handleVisibilityChange = this.handleVisibilityChange.bind(this);
         this.handleResize = this.handleResize.bind(this);
     }
 
     init() {
+        // Get DOM elements
+        const canvas = document.getElementById('gameCanvas');
+        const joystickEl = document.getElementById('joystick');
+        const knobEl = document.getElementById('joystick-knob');
+
+        // Initialize managers that need DOM
+        this.renderer = new Renderer(canvas);
+        this.inputManager = new InputManager(canvas, joystickEl, knobEl);
+
         // Initialize renderer (pre-renders sprites)
         this.renderer.init();
 
@@ -48,7 +48,7 @@ export class Game {
 
         // Create hero at initial position
         const { width, height } = this.renderer.getDimensions();
-        this.hero = new Hero(width / 2, height * 0.15);
+        this.hero = new Hero(width / 2, height / 2);
 
         // Initialize UI
         this.uiManager.init(() => this.resetGame());
@@ -69,6 +69,9 @@ export class Game {
         // Set input manager state
         this.inputManager.setUnit(this.renderer.getDimensions().unit);
         this.inputManager.setGameActive(this.gameActive);
+
+        // Reset UI (hides game over)
+        this.uiManager.resetUI();
 
         // Start game loop
         this.gameLoop();
@@ -97,25 +100,30 @@ export class Game {
 
     handleResize() {
         const dims = this.renderer.resize();
+        if (dims.width === 0 || dims.height === 0) return;
+        
         this.inputManager.setUnit(dims.unit);
 
-        // Reset hero position on resize
+        // Reset hero position on resize if not in game or if just started
         if (this.hero) {
-            this.hero.x = dims.width / 2;
-            this.hero.y = dims.height * 0.15;
+            if (!this.gameActive || this.score === 0) {
+                this.hero.x = dims.width / 2;
+                this.hero.y = dims.height / 2;
+            }
         }
     }
 
     update(now) {
         const { width, height, unit } = this.renderer.getDimensions();
+        if (width === 0 || height === 0) return;
 
         if (!this.isWindowVisible) return;
 
         if (this.isGameOverAnimating) {
             const progress = (now - this.gameOverStartTime) / 500;
             
-            // Hero stays bobbing in the center horizontally, but at original height
-            this.hero.idleBob(now, width / 2, height * 0.15, unit);
+            // Hero stays bobbing in the center horizontally
+            this.hero.idleBob(now, width / 2, height / 2, unit);
 
             if (progress >= 1) {
                 this.isGameOverAnimating = false;
@@ -130,7 +138,7 @@ export class Game {
 
         if (!this.gameActive) {
             // Just do idle bob animation when game is not active
-            this.hero.idleBob(now, width / 2, height * 0.15, unit);
+            this.hero.idleBob(now, width / 2, height / 2, unit);
             return;
         }
 
@@ -143,20 +151,18 @@ export class Game {
             this.uiManager.updateScore(this.score);
         });
 
-        // Update enemies (skip first second for grace period)
-        if (now - this.gameStartTime >= 1000) {
-            this.enemyManager.update(
-                now, 
-                width, 
-                height, 
-                unit, 
-                this.gameStartTime,
-                this.rewardManager.getRewards(),
-                this.hero,
-                () => this.gameOver(now),
-                this.score
-            );
-        }
+        // Update enemies
+        this.enemyManager.update(
+            now, 
+            width, 
+            height, 
+            unit, 
+            this.gameStartTime,
+            this.rewardManager.getRewards(),
+            this.hero,
+            () => this.gameOver(now),
+            this.score
+        );
     }
 
     draw(now) {
@@ -177,7 +183,7 @@ export class Game {
     }
 
     gameOver(now) {
-        if (!this.gameActive) return; // Prevent multiple calls
+        if (!this.gameActive || now - this.gameStartTime < 2000) return; // Prevent multiple calls and initial collisions
         this.gameActive = false;
         this.isGameOverAnimating = true;
         this.gameOverStartTime = now;
@@ -194,7 +200,7 @@ export class Game {
 
         // Reset hero
         const { width, height } = this.renderer.getDimensions();
-        this.hero.reset(width / 2, height * 0.15);
+        this.hero.reset(width / 2, height / 2);
 
         // Reset managers
         this.totalPauseTime = 0;

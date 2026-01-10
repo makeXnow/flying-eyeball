@@ -29,7 +29,8 @@ export class Renderer {
         this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
         
         // Calculate unit based on height (1 unit = height / 200)
-        this.unit = this.height / 200;
+        // Ensure unit is at least a sane minimum
+        this.unit = Math.max(0.1, this.height / 200);
         
         // Update CSS variable for UI scaling
         document.documentElement.style.setProperty('--u', `${this.unit}px`);
@@ -54,7 +55,8 @@ export class Renderer {
     }
 
     clear() {
-        this.ctx.clearRect(0, 0, this.width, this.height);
+        this.ctx.fillStyle = '#ffffff';
+        this.ctx.fillRect(0, 0, this.width, this.height);
     }
 
     render(now, hero, rewardManager, enemyManager, opacity = 1) {

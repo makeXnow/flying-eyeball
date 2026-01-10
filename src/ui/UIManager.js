@@ -43,9 +43,8 @@ export class UIManager {
         // Hide dashboard score
         this.dashboardScore.style.visibility = 'hidden';
         
-        // Show game over screen (remove hidden, add flex)
-        this.gameOverScreen.classList.remove('hidden');
-        this.gameOverScreen.classList.add('flex');
+        // Show game over screen
+        this.gameOverScreen.style.display = 'flex';
         
         // Render leaderboard with input option
         this.leaderboard.render(false, score, (hasName) => {
@@ -54,8 +53,7 @@ export class UIManager {
     }
 
     hideGameOver() {
-        this.gameOverScreen.classList.add('hidden');
-        this.gameOverScreen.classList.remove('flex');
+        this.gameOverScreen.style.display = 'none';
         this.dashboardScore.style.visibility = 'visible';
     }
 

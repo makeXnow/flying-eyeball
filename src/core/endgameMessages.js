@@ -1,5 +1,5 @@
 export const ENDGAME_MESSAGES = [
-    "Vision Lost!",
+    "DEBUG MODE ACTIVE",
     "Eye Contact Broken!",
     "You Blinked!",
     "Blinked Too Soon!",

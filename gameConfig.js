@@ -1,21 +1,37 @@
 // --- GAME CONFIGURATION ---
 // You can edit these values to tweak the game balance.
 
+// Maximum number of enemies allowed on screen at once
+window.MAX_ENEMIES = 10;
+
+// Maximum number of queued enemies to visually show at the edges
+window.MAX_VISIBLE_QUEUE = 10;
+
 // Set to an emoji (like '🐜') to only spawn that enemy for testing. Set to null for Normal Mode.
-const TEST_ENEMY = null; 
+window.TEST_ENEMY = null; 
+
+// Global Spawn Rules:
+// startDelay: Initial seconds between spawns
+// endDelay: Final seconds between spawns
+// rampDuration: Seconds it takes to reach endDelay
+window.SPAWN_SETTINGS = {
+    startDelay: 2,
+    endDelay: 1,
+    rampDuration: 90
+};
 
 // Enemy Rules:
 // firstPts: Score needed to start spawning
-// min/max: Random seconds between spawns
+// weight: Relative probability of spawning (default 20)
 // size: Multiplier for visual size
 // speed: Base movement speed (0.3 is average)
-const ENEMY_CONFIG = [
-    { emoji: '🪰', firstPts: 0,   min: 3, max: 6,  size: 3,   speed: 0.3 },
-    { emoji: '🐝', firstPts: 12,   min: 5, max: 7,  size: 3.6, speed: 0.2 },
-    { emoji: '🪲', firstPts: 25,  min: 3, max: 12, size: 3.6, speed: 0.0025 },
-    { emoji: '🐜', firstPts: 50,  min: 7, max: 10, size: 1.8, speed: 0.166, groupMin: 3, groupMax: 7, groupGap: 20 },
-    { emoji: '🕷️', firstPts: 100, min: 2, max: 7,  size: 4.8, speed: 0 },
-    { emoji: '🪳', firstPts: 150, min: 2, max: 4,  size: 3,   speed: 0.5 }
+window.ENEMY_CONFIG = [
+    { emoji: '🪰', firstPts: 0,   weight: 20, size: 3,   speed: 0.3 },
+    { emoji: '🐝', firstPts: 12,  weight: 20, size: 3.6, speed: 0.2 },
+    { emoji: '🪲', firstPts: 25,  weight: 20, size: 3.6, speed: 0.0025 },
+    { emoji: '🐜', firstPts: 50,  weight: 20, size: 1.8, speed: 0.166, groupMin: 3, groupMax: 7, groupGap: 20 },
+    { emoji: '🕷️', firstPts: 100, weight: 20, size: 4.8, speed: 0 },
+    { emoji: '🪳', firstPts: 150, weight: 20, size: 3,   speed: 0.5 }
 ];
 
 // Reward Rules:
@@ -23,10 +39,10 @@ const ENEMY_CONFIG = [
 // min/max: Random seconds between spawns
 // size: Multiplier for visual size
 // color: Color of the burst effect when collected
-const REWARD_DATA = { 
-    '🫐': { pts: 1, min: 1, max: 3, size: 3.6, color: '#3b82f6' }, 
-    '🍐': { pts: 3, min: 5, max: 8, size: 6, color: '#84cc16' }, 
-    '🍋': { pts: 7, min: 10, max: 20, size: 8.4, color: '#eab308' }, 
-    '🍊': { pts: 12, min: 20, max: 30, size: 4.8, color: '#f97316' }, 
-    '🍒': { pts: 25, min: 30, max: 40, size: 4.8, color: '#ef4444' } 
+window.REWARD_DATA = { 
+    '🫐': { pts: 1, min: 1, max: 3, size: 4, color: '#3b82f6' }, 
+    '🍐': { pts: 3, min: 5, max: 8, size: 7, color: '#84cc16' }, 
+    '🍋': { pts: 7, min: 10, max: 20, size: 6, color: '#eab308' }, 
+    '🍊': { pts: 12, min: 20, max: 30, size: 6, color: '#f97316' }, 
+    '🍒': { pts: 25, min: 30, max: 40, size: 5, color: '#ef4444' } 
 };
