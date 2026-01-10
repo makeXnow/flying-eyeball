@@ -5,8 +5,8 @@ export class Roach extends BaseEnemy {
         super({
             emoji: '🪳',
             x, y, angle,
-            size: 6,
-            speed: 1.0 * unit, // Half of original 2.0
+            size: 3,
+            speed: 1.0 * unit,
             orient: 'up'
         });
         this.vx = Math.cos(angle) * this.speed;
@@ -18,6 +18,7 @@ export class Roach extends BaseEnemy {
     update(now, width, height, unit) {
         super.update(now, width, height, unit);
         this.distTraveled += this.speed;
+        
         if (this.distTraveled >= this.nextTurnAt) {
             this.angle += (Math.random() * 160 - 80) * Math.PI / 180;
             this.vx = Math.cos(this.angle) * this.speed;

@@ -5,42 +5,44 @@ export class Ant extends BaseEnemy {
         super({
             emoji: '🐜',
             x, y,
-            size: 3.6,
-            speed: 0.3 * unit,
-            orient: 'left'
+            size: 1.8,
+            speed: 0.25 * unit,
+            orient: 'up'
         });
         this.canEatRewards = true;
         this.leader = leader;
-        this.offset = offset; // frames behind leader
+        this.offset = offset;
         this.history = [];
-        this.angle = Math.PI / 4 * (Math.random() < 0.5 ? 1 : -1);
+        
+        // Leaders pick a diagonal direction
+        if (!leader) {
+            const diagonals = [Math.PI / 4, 3 * Math.PI / 4, 5 * Math.PI / 4, 7 * Math.PI / 4];
+            this.angle = diagonals[Math.floor(Math.random() * diagonals.length)];
+        }
+        
         this.phase = Math.random() * Math.PI * 2;
     }
 
     update(now, width, height, unit, rewards) {
         if (!this.leader) {
-            // Leader movement: Diagonal sine wave
-            this.phase += 0.05;
-            const sineOffset = Math.sin(this.phase) * (unit * 2);
-            
-            const baseVx = Math.cos(this.angle) * this.speed;
-            const baseVy = Math.sin(this.angle) * this.speed;
-            
-            // Add sine perpendicular to direction
+            // Leader movement with sine wave
+            this.phase += 0.08;
             const perpAngle = this.angle + Math.PI / 2;
-            this.vx = baseVx + Math.cos(perpAngle) * (Math.cos(this.phase) * 0.1 * unit);
-            this.vy = baseVy + Math.sin(perpAngle) * (Math.cos(this.phase) * 0.1 * unit);
+            const wave = Math.cos(this.phase) * (unit * 0.1);
+            
+            this.vx = Math.cos(this.angle) * this.speed + Math.cos(perpAngle) * wave;
+            this.vy = Math.sin(this.angle) * this.speed + Math.sin(perpAngle) * wave;
             
             this.x += this.vx;
             this.y += this.vy;
             
             // Store history for followers
             this.history.push({ x: this.x, y: this.y, vx: this.vx, vy: this.vy });
-            if (this.history.length > 50) this.history.shift();
+            if (this.history.length > 100) this.history.shift();
         } else {
-            // Follower movement
-            const targetIdx = Math.max(0, this.leader.history.length - 1 - this.offset);
-            const target = this.leader.history[targetIdx];
+            // Follower movement - follow leader's path
+            const targetIdx = this.leader.history.length - 1 - this.offset;
+            const target = this.leader.history[Math.max(0, targetIdx)];
             if (target) {
                 this.x = target.x;
                 this.y = target.y;
@@ -49,7 +51,10 @@ export class Ant extends BaseEnemy {
             }
         }
 
-        // Eat rewards
+        // Update angle for drawing
+        this.angle = Math.atan2(this.vy, this.vx);
+
+        // Ants can eat rewards
         if (rewards) {
             for (let i = rewards.length - 1; i >= 0; i--) {
                 const r = rewards[i];
@@ -59,5 +64,18 @@ export class Ant extends BaseEnemy {
                 }
             }
         }
+    }
+
+    draw(ctx, sprites, unit) {
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        ctx.rotate(Math.atan2(this.vy, this.vx) + Math.PI / 2);
+        
+        const sprite = sprites[this.emoji];
+        if (sprite) {
+            const d = this.size * unit * 2;
+            ctx.drawImage(sprite, -d / 2, -d / 2, d, d);
+        }
+        ctx.restore();
     }
 }

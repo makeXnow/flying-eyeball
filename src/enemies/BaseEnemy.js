@@ -3,8 +3,8 @@ export class BaseEnemy {
         this.emoji = config.emoji;
         this.x = config.x;
         this.y = config.y;
-        this.size = config.size; // in units
-        this.speed = config.speed; // in units
+        this.size = config.size;
+        this.speed = config.speed;
         this.orient = config.orient || 'up';
         this.vx = config.vx || 0;
         this.vy = config.vy || 0;
@@ -31,7 +31,7 @@ export class BaseEnemy {
         const sprite = sprites[this.emoji];
         if (sprite) {
             const d = this.size * unit * 2;
-            ctx.drawImage(sprite, -d/2, -d/2, d, d);
+            ctx.drawImage(sprite, -d / 2, -d / 2, d, d);
         }
         ctx.restore();
     }
