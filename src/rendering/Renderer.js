@@ -57,16 +57,16 @@ export class Renderer {
         this.ctx.clearRect(0, 0, this.width, this.height);
     }
 
-    render(now, hero, rewardManager, enemyManager) {
+    render(now, hero, rewardManager, enemyManager, opacity = 1) {
         this.clear();
         
         const sprites = this.spriteCache.getAllSprites();
         
         // Draw rewards and floating texts
-        rewardManager.draw(this.ctx, sprites, this.unit, now);
+        rewardManager.draw(this.ctx, sprites, this.unit, now, opacity);
         
         // Draw enemies
-        enemyManager.draw(this.ctx, sprites, this.unit);
+        enemyManager.draw(this.ctx, sprites, this.unit, opacity);
         
         // Draw hero
         hero.draw(this.ctx, sprites, this.unit, now);

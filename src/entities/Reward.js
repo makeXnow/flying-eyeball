@@ -22,7 +22,7 @@ export class Reward {
         if (sprite) {
             const displaySize = this.size * this.growProgress * 2;
             ctx.save();
-            ctx.globalAlpha = this.growProgress;
+            ctx.globalAlpha *= this.growProgress;
             ctx.drawImage(
                 sprite, 
                 this.x - displaySize / 2, 

@@ -25,6 +25,8 @@ export class Game {
 
         // Game state
         this.gameActive = true;
+        this.isGameOverAnimating = false;
+        this.gameOverStartTime = 0;
         this.score = 0;
         this.gameStartTime = 0;
         this.totalPauseTime = 0;
@@ -106,6 +108,20 @@ export class Game {
 
         if (!this.isWindowVisible) return;
 
+        if (this.isGameOverAnimating) {
+            const progress = (now - this.gameOverStartTime) / 500;
+            
+            if (progress >= 1) {
+                this.isGameOverAnimating = false;
+                this.uiManager.showGameOver(this.score);
+            } else {
+                // Update entities to fall during animation
+                this.enemyManager.updateGameOver(unit);
+                this.rewardManager.updateGameOver(unit);
+            }
+            return;
+        }
+
         if (!this.gameActive) {
             // Just do idle bob animation when game is not active
             this.hero.idleBob(now, height * 0.15, unit);
@@ -131,14 +147,18 @@ export class Game {
                 this.gameStartTime,
                 this.rewardManager.getRewards(),
                 this.hero,
-                () => this.gameOver(),
+                () => this.gameOver(now),
                 this.score
             );
         }
     }
 
     draw(now) {
-        this.renderer.render(now, this.hero, this.rewardManager, this.enemyManager);
+        let opacity = 1;
+        if (this.isGameOverAnimating) {
+            opacity = 1 - Math.min(1, (now - this.gameOverStartTime) / 500);
+        }
+        this.renderer.render(now, this.hero, this.rewardManager, this.enemyManager, opacity);
     }
 
     gameLoop() {
@@ -148,11 +168,12 @@ export class Game {
         requestAnimationFrame(this.gameLoop);
     }
 
-    gameOver() {
+    gameOver(now) {
         if (!this.gameActive) return; // Prevent multiple calls
         this.gameActive = false;
+        this.isGameOverAnimating = true;
+        this.gameOverStartTime = now;
         this.inputManager.setGameActive(false);
-        this.uiManager.showGameOver(this.score);
     }
 
     resetGame() {
@@ -161,6 +182,7 @@ export class Game {
 
         // Reset score
         this.score = 0;
+        this.isGameOverAnimating = false;
 
         // Reset hero
         const { width, height } = this.renderer.getDimensions();

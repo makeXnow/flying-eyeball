@@ -122,7 +122,16 @@ export class EnemyManager {
         }
     }
 
-    draw(ctx, sprites, unit) {
+    updateGameOver(unit) {
+        this.enemies.forEach(enemy => {
+            enemy.y += 2 * unit; // Fall down speed during game over
+        });
+    }
+
+    draw(ctx, sprites, unit, opacity = 1) {
+        ctx.save();
+        ctx.globalAlpha = opacity;
         this.enemies.forEach(enemy => enemy.draw(ctx, sprites, unit));
+        ctx.restore();
     }
 }

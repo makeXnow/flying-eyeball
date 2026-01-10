@@ -6,12 +6,14 @@ export class RewardManager {
         this.rewards = [];
         this.spawnTimers = {};
         this.floatingTexts = [];
+        this.lastNow = 0;
     }
 
     reset(now) {
         this.rewards = [];
         this.floatingTexts = [];
         this.spawnTimers = {};
+        this.lastNow = now;
         
         // Schedule initial spawns for all reward types
         Object.keys(REWARD_DATA).forEach(emoji => {
@@ -33,13 +35,23 @@ export class RewardManager {
     }
 
     update(now, width, height, unit, hero, onScoreChange) {
+        const deltaTime = now - this.lastNow;
+        this.lastNow = now;
+
         // Check spawn timers
-        Object.keys(REWARD_DATA).forEach(emoji => {
-            if (now >= this.spawnTimers[emoji]) {
-                this.spawnReward(emoji, width, height, unit);
-                this.scheduleReward(emoji, now);
-            }
-        });
+        if (this.rewards.length >= 10) {
+            // Pause spawn clock: move all timers forward by the time that passed
+            Object.keys(this.spawnTimers).forEach(emoji => {
+                this.spawnTimers[emoji] += deltaTime;
+            });
+        } else {
+            Object.keys(REWARD_DATA).forEach(emoji => {
+                if (this.rewards.length < 10 && now >= this.spawnTimers[emoji]) {
+                    this.spawnReward(emoji, width, height, unit);
+                    this.scheduleReward(emoji, now);
+                }
+            });
+        }
 
         // Update rewards and check hero collision
         const heroCollisionRadius = HERO_RADIUS * unit;
@@ -81,15 +93,24 @@ export class RewardManager {
         }
     }
 
-    draw(ctx, sprites, unit, now) {
+    updateGameOver(unit) {
+        this.rewards.forEach(reward => {
+            reward.y += 2 * unit; // Fall down speed during game over
+        });
+    }
+
+    draw(ctx, sprites, unit, now, opacity = 1) {
         // Draw rewards
+        ctx.save();
+        ctx.globalAlpha = opacity;
         this.rewards.forEach(reward => reward.draw(ctx, sprites));
+        ctx.restore();
 
         // Draw floating texts
         this.floatingTexts.forEach(t => {
             const progress = (now - t.time) / 1000;
             ctx.save();
-            ctx.globalAlpha = 1 - progress;
+            ctx.globalAlpha = (1 - progress) * opacity;
             ctx.fillStyle = t.color;
             ctx.font = `bold ${unit * (4 + progress * 4)}px sans-serif`;
             ctx.textAlign = 'center';

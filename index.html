@@ -71,7 +71,7 @@
             border-radius: 50%;
             pointer-events: none;
             display: none;
-            z-index: 20;
+            z-index: 200;
         }
         #joystick-knob {
             position: absolute;
@@ -129,7 +129,6 @@
             <span id="score-val">0</span>
         </div>
     </div>
-    <div id="joystick"><div id="joystick-knob"></div></div>
     <canvas id="gameCanvas"></canvas>
     <div id="game-over" class="hidden absolute inset-0 flex-col items-center justify-start text-center" style="padding: calc(var(--u) * 4);">
         <div class="h-[22%] w-full"></div>
@@ -149,6 +148,8 @@
         </div>
     </div>
 </div>
+
+<div id="joystick"><div id="joystick-knob"></div></div>
 
 <script type="module" src="src/main.js"></script>
 </body>

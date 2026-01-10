@@ -34,28 +34,34 @@ export class InputManager {
 
     setupEventListeners() {
         // Mouse events
-        this.canvas.addEventListener('mousedown', (e) => this.handleStart(e));
+        window.addEventListener('mousedown', (e) => this.handleStart(e));
         window.addEventListener('mousemove', (e) => this.handleMove(e));
         window.addEventListener('mouseup', () => this.handleEnd());
 
         // Touch events
-        this.canvas.addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            this.handleStart(e.touches[0]);
-        });
-        this.canvas.addEventListener('touchmove', (e) => {
-            e.preventDefault();
-            this.handleMove(e.touches[0]);
-        });
-        this.canvas.addEventListener('touchend', () => this.handleEnd());
+        window.addEventListener('touchstart', (e) => {
+            // Only prevent default if we're actually starting a joystick interaction
+            if (this.gameActive) {
+                e.preventDefault();
+                this.handleStart(e.touches[0]);
+            }
+        }, { passive: false });
+
+        window.addEventListener('touchmove', (e) => {
+            if (this.state.active) {
+                e.preventDefault();
+                this.handleMove(e.touches[0]);
+            }
+        }, { passive: false });
+
+        window.addEventListener('touchend', () => this.handleEnd());
     }
 
     handleStart(e) {
         if (!this.gameActive) return;
 
-        const rect = this.canvas.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const y = e.clientY - rect.top;
+        const x = e.clientX;
+        const y = e.clientY;
 
         this.state.active = true;
         this.state.startX = x;
@@ -69,9 +75,8 @@ export class InputManager {
     handleMove(e) {
         if (!this.state.active) return;
 
-        const rect = this.canvas.getBoundingClientRect();
-        this.state.currX = e.clientX - rect.left;
-        this.state.currY = e.clientY - rect.top;
+        this.state.currX = e.clientX;
+        this.state.currY = e.clientY;
 
         this.updateKnobPosition();
     }
