@@ -1,5 +1,20 @@
 import { Game } from './core/Game.js';
 
+// Calculate unit immediately so CSS values are ready before first paint
+function updateUnit() {
+    const container = document.getElementById('game-container');
+    if (container) {
+        const rect = container.getBoundingClientRect();
+        if (rect.height > 0) {
+            const unit = Math.max(0.1, rect.height / 200);
+            document.documentElement.style.setProperty('--u', `${unit}px`);
+        }
+    }
+}
+
+// Run once as soon as script loads (since it's deferred/module, DOM is mostly ready)
+updateUnit();
+
 let gameStarted = false;
 
 function hideSplashScreen() {
@@ -14,29 +29,33 @@ function hideSplashScreen() {
 }
 
 function startGame() {
+    // Ensure unit is set correctly before anything else
+    updateUnit();
+    window.addEventListener('resize', updateUnit);
+
     const splash = document.getElementById('splash-screen');
+    const startBtn = document.getElementById('start-btn');
     
-    // If splash screen exists (initial load), show it for 2 seconds
-    if (splash) {
-        const game = new Game();
-        
-        const launchGame = () => {
-            if (gameStarted) return; // Prevent double init
-            gameStarted = true;
-            hideSplashScreen();
-            game.init();
-        };
-        
-        // Click/tap to skip splash early
-        splash.addEventListener('click', launchGame);
-        splash.addEventListener('touchstart', launchGame);
-        
-        // Auto-launch after 2 seconds
-        setTimeout(launchGame, 2000);
-    } else {
-        // No splash (shouldn't happen, but fallback)
-        const game = new Game();
+    const game = new Game();
+    
+    const launchGame = () => {
+        if (gameStarted) return; // Prevent double init
+        gameStarted = true;
+        hideSplashScreen();
         game.init();
+    };
+
+    if (startBtn) {
+        startBtn.onclick = launchGame;
+        startBtn.ontouchstart = (e) => {
+            e.preventDefault();
+            launchGame();
+        };
+    } else if (splash) {
+        // Fallback for full splash click if button is missing
+        splash.onclick = launchGame;
+    } else {
+        launchGame();
     }
 }
 

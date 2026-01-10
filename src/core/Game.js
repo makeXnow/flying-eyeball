@@ -52,7 +52,7 @@ export class Game {
 
         // Create hero at initial position (at the top)
         const { width, height } = this.renderer.getDimensions();
-        this.hero = new Hero(width / 2, height * 0.15);
+        this.hero = new Hero(width / 2, height * 0.18);
 
         // Initialize UI
         this.uiManager.init(() => this.resetGame());
@@ -122,7 +122,7 @@ export class Game {
             } else {
                 // Bobbing at top
                 this.hero.x = dims.width / 2;
-                this.hero.y = dims.height * 0.15;
+                this.hero.y = dims.height * 0.18;
             }
         }
     }
@@ -135,7 +135,7 @@ export class Game {
 
         if (this.isGameOverAnimating) {
             const progress = Math.min(1, (now - this.gameOverStartTime) / 800);
-            const topY = height * 0.15;
+            const topY = height * 0.18;
             
             // Interpolate to top
             const currentBaseX = width / 2;
@@ -156,7 +156,7 @@ export class Game {
 
         if (this.isStartingAnimating) {
             const progress = Math.min(1, (now - this.startingStartTime) / 800);
-            const topY = height * 0.15;
+            const topY = height * 0.18;
             const centerY = height / 2;
             
             const currentBaseX = width / 2;
@@ -177,7 +177,7 @@ export class Game {
 
         if (!this.gameActive) {
             // Just do idle bob animation at the top when game is not active
-            this.hero.idleBob(now, width / 2, height * 0.15, unit);
+            this.hero.idleBob(now, width / 2, height * 0.18, unit);
             return;
         }
 
@@ -205,9 +205,11 @@ export class Game {
     }
 
     draw(now) {
-        // Update timer display
+        // Update timer display - decoupled from physics for robustness
         const elapsed = (this.gameActive && this.gameStartTime > 0) ? (now - this.gameStartTime) : 0;
-        this.uiManager.updateTimer(elapsed);
+        if (this.uiManager && typeof this.uiManager.updateTimer === 'function') {
+            this.uiManager.updateTimer(elapsed);
+        }
 
         let entityOpacity = 1;
         if (this.isGameOverAnimating) {

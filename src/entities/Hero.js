@@ -74,11 +74,11 @@ export class Hero {
     idleBob(now, baseX, baseY, unit) {
         const bobSpeed = 0.003;
         const bobPhase = now * bobSpeed;
-        const bobAmt = unit * 4;
+        const bobAmt = unit * 6;
         
         this.x = baseX;
         const oldY = this.y;
-        this.y = baseY + Math.sin(bobPhase) * bobAmt;
+        this.y = (baseY + unit * 2) + Math.sin(bobPhase) * bobAmt;
         this.vy = this.y - oldY;
         
         // Use the vertical movement to drive the eye direction
