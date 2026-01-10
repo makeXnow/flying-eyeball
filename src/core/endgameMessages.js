@@ -1,5 +1,4 @@
 export const ENDGAME_MESSAGES = [
-    "DEBUG MODE ACTIVE",
     "Eye Contact Broken!",
     "You Blinked!",
     "Blinked Too Soon!",
@@ -12,5 +11,8 @@ export const ENDGAME_MESSAGES = [
     "Blindsided!",
     "Look Out!",
     "Open Your Eye!",
+    "Get a Contact Lens!",
+    "Keep Your Eye Open!",
+    "Keep Your on the Fruit!",
     "Nice Try, Big Eye!"
 ];
