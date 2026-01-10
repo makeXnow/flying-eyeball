@@ -8,6 +8,12 @@ function updateUnit() {
         if (rect.height > 0) {
             const unit = Math.max(0.1, rect.height / 200);
             document.documentElement.style.setProperty('--u', `${unit}px`);
+            
+            // Mark splash as ready once units are calculated to prevent "pop-in"
+            const splash = document.getElementById('splash-screen');
+            if (splash && !splash.classList.contains('ready')) {
+                splash.classList.add('ready');
+            }
         }
     }
 }
