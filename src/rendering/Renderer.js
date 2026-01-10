@@ -55,7 +55,7 @@ export class Renderer {
     }
 
     clear() {
-        this.ctx.fillStyle = '#0f172a'; // Match body/splash-frame background
+        this.ctx.fillStyle = '#ffffff';
         this.ctx.fillRect(0, 0, this.width, this.height);
     }
 
