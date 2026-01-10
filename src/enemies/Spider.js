@@ -3,7 +3,8 @@ import { ENEMY_CONFIG } from '../core/constants.js';
 
 export class Spider extends BaseEnemy {
     constructor(width, height, unit) {
-        const config = ENEMY_CONFIG.find(c => c.emoji === '🕷️');
+        const activeConfig = window.ENEMY_CONFIG || ENEMY_CONFIG;
+        const config = activeConfig.find(c => c.emoji === '🕷️');
         const targetX = Math.random() * (width - 40 * unit) + 20 * unit;
         const targetY = Math.random() * (height - 40 * unit) + 20 * unit;
         const startY = -10 * unit;

@@ -7,12 +7,6 @@ export const SPRITE_RESOLUTION = 256;
 // Helper to get globals from gameConfig.js
 const getGlobal = (key, fallback) => window[key] || fallback;
 
-// Maximum number of enemies allowed on screen at once
-export const MAX_ENEMIES = getGlobal('MAX_ENEMIES', 10);
-
-// Maximum number of queued enemies to visually show at the edges
-export const MAX_VISIBLE_QUEUE = getGlobal('MAX_VISIBLE_QUEUE', 10);
-
 // Global Spawn Settings
 export const START_SPAWN = getGlobal('start_spawn', 2);
 export const MAX_SPAWN = getGlobal('max_spawn', 1);

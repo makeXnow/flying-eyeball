@@ -3,7 +3,8 @@ import { ENEMY_CONFIG } from '../core/constants.js';
 
 export class Ant extends BaseEnemy {
     constructor(x, y, unit, leader = null, offset = 0) {
-        const config = ENEMY_CONFIG.find(c => c.emoji === '🐜');
+        const activeConfig = window.ENEMY_CONFIG || ENEMY_CONFIG;
+        const config = activeConfig.find(c => c.emoji === '🐜');
         const antSpeed = config.speed * unit;
         super({ emoji: '🐜', x, y, size: config.size, speed: antSpeed, orient: 'left' });
         this.leader = leader;

@@ -1,4 +1,4 @@
-import { ENEMY_CONFIG, HERO_COLLISION_RADIUS, MAX_ENEMIES, MAX_VISIBLE_QUEUE, TEST_ENEMY, START_SPAWN, MAX_SPAWN, MAX_SPAWN_TIME } from '../core/constants.js';
+import { ENEMY_CONFIG, HERO_COLLISION_RADIUS, TEST_ENEMY, START_SPAWN, MAX_SPAWN, MAX_SPAWN_TIME } from '../core/constants.js';
 import { Fly } from '../enemies/Fly.js';
 import { Beetle } from '../enemies/Beetle.js';
 import { Bee } from '../enemies/Bee.js';
@@ -22,16 +22,24 @@ export class EnemyManager {
     }
 
     getSpawnInterval(elapsed) {
-        // Ramp from START_SPAWN to MAX_SPAWN over MAX_SPAWN_TIME
-        const progress = Math.min(elapsed / (MAX_SPAWN_TIME * 1000), 1);
-        return START_SPAWN - (START_SPAWN - MAX_SPAWN) * progress;
+        // Use live values from window if available
+        const startSpawn = window.start_spawn !== undefined ? window.start_spawn : START_SPAWN;
+        const maxSpawn = window.max_spawn !== undefined ? window.max_spawn : MAX_SPAWN;
+        const maxSpawnTime = window.max_spawn_time !== undefined ? window.max_spawn_time : MAX_SPAWN_TIME;
+
+        // Ramp from startSpawn to maxSpawn over maxSpawnTime
+        const progress = Math.min(elapsed / (maxSpawnTime * 1000), 1);
+        return startSpawn - (startSpawn - maxSpawn) * progress;
     }
 
     selectWeightedEnemy(currentScore) {
         const isTest = this.testerMode !== null;
         
+        // Use live config from window if available, fallback to imported one
+        const activeConfig = window.ENEMY_CONFIG || ENEMY_CONFIG;
+        
         // Filter available enemies based on score threshold
-        const available = ENEMY_CONFIG.filter((config) => {
+        const available = activeConfig.filter((config) => {
             if (isTest) return config.emoji === this.testerMode;
             return currentScore >= config.firstPts;
         });
@@ -45,15 +53,16 @@ export class EnemyManager {
             const weight = config.weight || 20;
             random -= weight;
             if (random <= 0) {
-                // Return the index in the original ENEMY_CONFIG
-                return ENEMY_CONFIG.findIndex(c => c.emoji === config.emoji);
+                // Return the index in the active configuration
+                return activeConfig.findIndex(c => c.emoji === config.emoji);
             }
         }
         return 0; // Fallback
     }
 
     spawn(index, width, height, unit) {
-        const config = ENEMY_CONFIG[index];
+        const activeConfig = window.ENEMY_CONFIG || ENEMY_CONFIG;
+        const config = activeConfig[index];
         if (!config) return;
         
         // Calculate spawn position from edge
@@ -78,28 +87,29 @@ export class EnemyManager {
         // Angle toward center with slight randomness
         angle = Math.atan2((height / 2) - y, (width / 2) - x) + (Math.random() * 0.5 - 0.25);
 
-        // Create enemy based on type and add to queue
+        // Create enemy based on type and add directly to enemies
+        let newEnemy = null;
         switch (config.emoji) {
             case '🪰':
-                this.queue.push(new Fly(x, y, angle, unit));
+                newEnemy = new Fly(x, y, angle, unit);
                 break;
             case '🪲':
-                this.queue.push(new Beetle(width, height, unit));
+                newEnemy = new Beetle(width, height, unit);
                 break;
             case '🐝':
-                this.queue.push(new Bee(width, height, unit));
+                newEnemy = new Bee(width, height, unit);
                 break;
             case '🐜':
-                // Spawn a group of ants as a single unit
-                this.queue.push(new AntGroup(x, y, unit));
+                newEnemy = new AntGroup(x, y, unit);
                 break;
             case '🕷️':
-                this.queue.push(new Spider(width, height, unit));
+                newEnemy = new Spider(width, height, unit);
                 break;
             case '🪳':
-                this.queue.push(new Roach(x, y, angle, unit));
+                newEnemy = new Roach(x, y, angle, unit);
                 break;
         }
+        if (newEnemy) this.enemies.push(newEnemy);
     }
 
     update(now, width, height, unit, gameStartTime, rewards, hero, onGameOver, currentScore) {
@@ -121,11 +131,6 @@ export class EnemyManager {
                 this.nextSpawnTime = now + 500;
                 break;
             }
-        }
-
-        // Fill active slots from queue
-        while (this.enemies.length < MAX_ENEMIES && this.queue.length > 0) {
-            this.enemies.push(this.queue.shift());
         }
 
         // Update active enemies
@@ -150,9 +155,6 @@ export class EnemyManager {
         this.enemies.forEach(enemy => {
             enemy.y += 2 * unit;
         });
-        this.queue.forEach(enemy => {
-            enemy.y += 2 * unit;
-        });
     }
 
     draw(ctx, sprites, unit, opacity = 1) {
@@ -160,12 +162,6 @@ export class EnemyManager {
         ctx.globalAlpha = opacity;
         // Draw active enemies
         this.enemies.forEach(enemy => enemy.draw(ctx, sprites, unit));
-        
-        // Draw queued enemies (faded) - limit to MAX_VISIBLE_QUEUE
-        ctx.globalAlpha = opacity * 0.5;
-        for (let i = 0; i < Math.min(this.queue.length, MAX_VISIBLE_QUEUE); i++) {
-            this.queue[i].draw(ctx, sprites, unit);
-        }
         ctx.restore();
     }
 }

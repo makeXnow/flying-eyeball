@@ -1,12 +1,6 @@
 // --- GAME CONFIGURATION ---
 // You can edit these values to tweak the game balance.
 
-// Maximum number of enemies allowed on screen at once
-window.MAX_ENEMIES = 10;
-
-// Maximum number of queued enemies to visually show at the edges
-window.MAX_VISIBLE_QUEUE = 10;
-
 // Set to an emoji (like '🐜') to only spawn that enemy for testing. Set to null for Normal Mode.
 window.TEST_ENEMY = null; 
 
@@ -23,10 +17,10 @@ window.max_spawn_time = 120;  // Seconds it takes to reach max_spawn
 window.ENEMY_CONFIG = [
     { emoji: '🪰', firstPts: 0,   weight: 20, size: 3,   speed: 0.3 },
     { emoji: '🐝', firstPts: 12,  weight: 20, size: 3.6, speed: 0.2 },
-    { emoji: '🪲', firstPts: 25,  weight: 20, size: 3.6, speed: 0.0025 },
+    { emoji: '🪲', firstPts: 25,  weight: 20, size: 5, speed: 0.0025 },
     { emoji: '🐜', firstPts: 50,  weight: 20, size: 1.8, speed: 0.166, groupMin: 3, groupMax: 7, groupGap: 20 },
     { emoji: '🕷️', firstPts: 100, weight: 20, size: 4.8, speed: 0 },
-    { emoji: '🪳', firstPts: 150, weight: 20, size: 3,   speed: 0.5 }
+    { emoji: '🪳', firstPts: 150, weight: 20, size: 7,   speed: 0.5 }
 ];
 
 // Reward Rules:

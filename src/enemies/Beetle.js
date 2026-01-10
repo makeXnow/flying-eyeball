@@ -3,7 +3,8 @@ import { ENEMY_CONFIG } from '../core/constants.js';
 
 export class Beetle extends BaseEnemy {
     constructor(width, height, unit) {
-        const config = ENEMY_CONFIG.find(c => c.emoji === '🪲');
+        const activeConfig = window.ENEMY_CONFIG || ENEMY_CONFIG;
+        const config = activeConfig.find(c => c.emoji === '🪲');
         const diameter = (Math.random() * 100 + 100) * unit;
         const radius = diameter / 2;
         const penetration = radius * (Math.random() * 0.45 + 0.05);

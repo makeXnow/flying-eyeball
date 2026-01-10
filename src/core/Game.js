@@ -246,6 +246,8 @@ export class Game {
         // Reset timers
         this.totalPauseTime = 0;
         const now = this.getGameTime();
+        this.enemyManager.reset(now, now);
+        this.rewardManager.reset(now);
 
         // Reset UI
         this.uiManager.resetUI();

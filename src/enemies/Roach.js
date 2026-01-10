@@ -3,7 +3,8 @@ import { ENEMY_CONFIG } from '../core/constants.js';
 
 export class Roach extends BaseEnemy {
     constructor(x, y, angle, unit) {
-        const config = ENEMY_CONFIG.find(c => c.emoji === '🪳');
+        const activeConfig = window.ENEMY_CONFIG || ENEMY_CONFIG;
+        const config = activeConfig.find(c => c.emoji === '🪳');
         super({
             emoji: '🪳',
             x: x,

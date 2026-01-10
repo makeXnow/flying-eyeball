@@ -15,8 +15,10 @@ export class RewardManager {
         this.spawnTimers = {};
         this.lastNow = now;
         
+        const activeData = window.REWARD_DATA || REWARD_DATA;
+        
         // Schedule initial spawns for all reward types
-        Object.keys(REWARD_DATA).forEach((emoji, index) => {
+        Object.keys(activeData).forEach((emoji, index) => {
             if (index === 0) {
                 // First reward type (🫐) spawns immediately
                 this.spawnTimers[emoji] = now;
@@ -27,7 +29,8 @@ export class RewardManager {
     }
 
     scheduleReward(emoji, now) {
-        const data = REWARD_DATA[emoji];
+        const activeData = window.REWARD_DATA || REWARD_DATA;
+        const data = activeData[emoji];
         const delay = (Math.random() * (data.max - data.min) + data.min) * 1000;
         this.spawnTimers[emoji] = now + delay;
     }
@@ -43,6 +46,8 @@ export class RewardManager {
         const deltaTime = now - this.lastNow;
         this.lastNow = now;
 
+        const activeData = window.REWARD_DATA || REWARD_DATA;
+
         // Check spawn timers
         if (this.rewards.length >= 10) {
             // Pause spawn clock: move all timers forward by the time that passed
@@ -50,7 +55,7 @@ export class RewardManager {
                 this.spawnTimers[emoji] += deltaTime;
             });
         } else {
-            Object.keys(REWARD_DATA).forEach(emoji => {
+            Object.keys(activeData).forEach(emoji => {
                 if (this.rewards.length < 10 && now >= this.spawnTimers[emoji]) {
                     this.spawnReward(emoji, width, height, unit);
                     this.scheduleReward(emoji, now);

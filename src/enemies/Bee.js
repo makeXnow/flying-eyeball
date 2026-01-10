@@ -3,7 +3,8 @@ import { ENEMY_CONFIG } from '../core/constants.js';
 
 export class Bee extends BaseEnemy {
     constructor(width, height, unit) {
-        const config = ENEMY_CONFIG.find(c => c.emoji === '🐝');
+        const activeConfig = window.ENEMY_CONFIG || ENEMY_CONFIG;
+        const config = activeConfig.find(c => c.emoji === '🐝');
         const side = Math.random() < 0.5 ? 'left' : 'right';
         const startX = side === 'left' ? -10 * unit : width + 10 * unit;
         const startY = Math.random() * height;
