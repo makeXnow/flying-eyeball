@@ -97,6 +97,9 @@ export class RewardManager {
         this.rewards.forEach(reward => {
             reward.y += 2 * unit; // Fall down speed during game over
         });
+        this.floatingTexts.forEach(t => {
+            t.y += 2 * unit; // Make floating texts fall too
+        });
     }
 
     draw(ctx, sprites, unit, now, opacity = 1) {

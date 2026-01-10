@@ -157,6 +157,8 @@ export class Game {
         let opacity = 1;
         if (this.isGameOverAnimating) {
             opacity = 1 - Math.min(1, (now - this.gameOverStartTime) / 500);
+        } else if (!this.gameActive) {
+            opacity = 0;
         }
         this.renderer.render(now, this.hero, this.rewardManager, this.enemyManager, opacity);
     }

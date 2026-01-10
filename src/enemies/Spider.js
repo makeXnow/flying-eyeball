@@ -18,24 +18,42 @@ export class Spider extends BaseEnemy {
         this.targetX = targetX;
         this.targetY = targetY;
         this.startY = startY;
-        this.state = 'descending';
+        this.peekY = height * 0.05;
+        this.state = 'entering'; // entering, pausing, descending, waiting, ascending
         this.progress = 0;
+        this.timer = 0;
         
         // Slower movement durations
         this.mainDescendDuration = 300;
         this.mainAscendDuration = 120;
         this.waitTimer = 0;
-        this.currentRotation = 0;
+        this.currentRotation = Math.PI; // Face down initially
         this.turnDir = Math.random() < 0.5 ? 1 : -1;
     }
 
     update(now, width, height, unit) {
-        if (this.state === 'descending') {
+        if (this.state === 'entering') {
+            this.progress += 1 / 60; // 1 second at 60fps
+            const p = Math.min(1, this.progress);
+            // Ease out quadratic for a smooth stop at 5%
+            const ease = 1 - (1 - p) * (1 - p);
+            this.y = this.startY + (this.peekY - this.startY) * ease;
+            
+            if (this.progress >= 1) {
+                this.state = 'pausing';
+                this.timer = now + 500; // 0.5 second pause
+            }
+        } else if (this.state === 'pausing') {
+            if (now >= this.timer) {
+                this.state = 'descending';
+                this.progress = 0;
+            }
+        } else if (this.state === 'descending') {
             this.progress += 1 / this.mainDescendDuration;
             const p = Math.min(1, this.progress);
             // Ease out cubic
             const ease = 1 - Math.pow(1 - p, 3);
-            this.y = this.startY + (this.targetY - this.startY) * ease;
+            this.y = this.peekY + (this.targetY - this.peekY) * ease;
             
             if (this.progress >= 1) {
                 this.state = 'waiting';
