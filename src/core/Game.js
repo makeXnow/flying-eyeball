@@ -16,9 +16,13 @@ export class Game {
         this.uiManager = new UIManager();
 
         this.hero = null;
-        this.gameActive = true;
+        this.gameActive = false;
         this.isGameOverAnimating = false;
         this.gameOverStartTime = 0;
+        this.isStartingAnimating = false;
+        this.startingStartTime = 0;
+        this.deathHeroX = 0;
+        this.deathHeroY = 0;
         this.score = 0;
         this.gameStartTime = 0;
         this.totalPauseTime = 0;
@@ -46,9 +50,9 @@ export class Game {
         // Initial resize to set dimensions
         this.handleResize();
 
-        // Create hero at initial position
+        // Create hero at initial position (at the top)
         const { width, height } = this.renderer.getDimensions();
-        this.hero = new Hero(width / 2, height / 2);
+        this.hero = new Hero(width / 2, height * 0.15);
 
         // Initialize UI
         this.uiManager.init(() => this.resetGame());
@@ -68,10 +72,14 @@ export class Game {
 
         // Set input manager state
         this.inputManager.setUnit(this.renderer.getDimensions().unit);
-        this.inputManager.setGameActive(this.gameActive);
+        this.inputManager.setGameActive(true);
 
         // Reset UI (hides game over)
         this.uiManager.resetUI();
+
+        // Trigger start animation
+        this.isStartingAnimating = true;
+        this.startingStartTime = now;
 
         // Start game loop
         this.gameLoop();
@@ -106,9 +114,15 @@ export class Game {
 
         // Reset hero position on resize if not in game or if just started
         if (this.hero) {
-            if (!this.gameActive || this.score === 0) {
+            if (this.isStartingAnimating || this.gameActive) {
+                if (this.score === 0) {
+                    this.hero.x = dims.width / 2;
+                    this.hero.y = dims.height / 2;
+                }
+            } else {
+                // Bobbing at top
                 this.hero.x = dims.width / 2;
-                this.hero.y = dims.height / 2;
+                this.hero.y = dims.height * 0.15;
             }
         }
     }
@@ -120,10 +134,14 @@ export class Game {
         if (!this.isWindowVisible) return;
 
         if (this.isGameOverAnimating) {
-            const progress = (now - this.gameOverStartTime) / 500;
+            const progress = Math.min(1, (now - this.gameOverStartTime) / 800);
+            const topY = height * 0.15;
             
-            // Hero stays bobbing in the center horizontally
-            this.hero.idleBob(now, width / 2, height / 2, unit);
+            // Interpolate to top
+            const currentBaseX = width / 2;
+            const currentBaseY = this.deathHeroY + (topY - this.deathHeroY) * progress;
+            
+            this.hero.idleBob(now, currentBaseX, currentBaseY, unit);
 
             if (progress >= 1) {
                 this.isGameOverAnimating = false;
@@ -136,9 +154,30 @@ export class Game {
             return;
         }
 
+        if (this.isStartingAnimating) {
+            const progress = Math.min(1, (now - this.startingStartTime) / 800);
+            const topY = height * 0.15;
+            const centerY = height / 2;
+            
+            const currentBaseX = width / 2;
+            const currentBaseY = topY + (centerY - topY) * progress;
+            
+            this.hero.idleBob(now, currentBaseX, currentBaseY, unit);
+            
+            if (progress >= 1) {
+                this.isStartingAnimating = false;
+                this.gameActive = true;
+                this.gameStartTime = now;
+                // Initialize timers for fresh start
+                this.rewardManager.reset(now);
+                this.enemyManager.reset(now, this.gameStartTime);
+            }
+            return;
+        }
+
         if (!this.gameActive) {
-            // Just do idle bob animation when game is not active
-            this.hero.idleBob(now, width / 2, height / 2, unit);
+            // Just do idle bob animation at the top when game is not active
+            this.hero.idleBob(now, width / 2, height * 0.15, unit);
             return;
         }
 
@@ -166,13 +205,14 @@ export class Game {
     }
 
     draw(now) {
-        let opacity = 1;
+        let entityOpacity = 1;
         if (this.isGameOverAnimating) {
-            opacity = 1 - Math.min(1, (now - this.gameOverStartTime) / 500);
-        } else if (!this.gameActive) {
-            opacity = 0;
+            entityOpacity = 1 - Math.min(1, (now - this.gameOverStartTime) / 800);
+        } else if (this.isStartingAnimating || !this.gameActive) {
+            entityOpacity = 0;
         }
-        this.renderer.render(now, this.hero, this.rewardManager, this.enemyManager, opacity);
+        
+        this.renderer.render(now, this.hero, this.rewardManager, this.enemyManager, entityOpacity);
     }
 
     gameLoop() {
@@ -187,6 +227,8 @@ export class Game {
         this.gameActive = false;
         this.isGameOverAnimating = true;
         this.gameOverStartTime = now;
+        this.deathHeroX = this.hero.x;
+        this.deathHeroY = this.hero.y;
         this.inputManager.setGameActive(false);
     }
 
@@ -198,25 +240,25 @@ export class Game {
         this.score = 0;
         this.isGameOverAnimating = false;
 
-        // Reset hero
-        const { width, height } = this.renderer.getDimensions();
-        this.hero.reset(width / 2, height / 2);
+        // Reset hero state but keep position for the start transition
+        this.hero.reset(this.hero.x, this.hero.y);
 
-        // Reset managers
+        // Reset timers
         this.totalPauseTime = 0;
-        this.gameStartTime = this.getGameTime();
         const now = this.getGameTime();
-        this.rewardManager.reset(now);
-        this.enemyManager.reset(now, this.gameStartTime);
 
         // Reset UI
         this.uiManager.resetUI();
+
+        // Start starting animation
+        this.isStartingAnimating = true;
+        this.startingStartTime = now;
 
         // Reset input
         this.inputManager.reset();
         this.inputManager.setGameActive(true);
 
-        // Activate game
-        this.gameActive = true;
+        // Deactivate game until animation completes
+        this.gameActive = false;
     }
 }

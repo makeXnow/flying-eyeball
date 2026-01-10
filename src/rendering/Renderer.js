@@ -60,21 +60,23 @@ export class Renderer {
     }
 
     render(now, hero, rewardManager, enemyManager, opacity = 1) {
+        // Ensure we always clear with full opacity
+        this.ctx.globalAlpha = 1.0;
         this.clear();
         
         const sprites = this.spriteCache.getAllSprites();
         
-        this.ctx.globalAlpha = opacity;
-
-        // Draw rewards and floating texts
+        // Draw rewards and floating texts with specified opacity
         rewardManager.draw(this.ctx, sprites, this.unit, now, opacity);
         
-        // Draw enemies
+        // Draw enemies with specified opacity
         enemyManager.draw(this.ctx, sprites, this.unit, opacity);
         
-        // Draw hero
+        // Draw hero (always fully visible)
+        this.ctx.globalAlpha = 1.0;
         hero.draw(this.ctx, sprites, this.unit, now);
 
+        // Reset for next frame
         this.ctx.globalAlpha = 1.0;
     }
 }

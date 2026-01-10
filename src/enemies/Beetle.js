@@ -69,5 +69,12 @@ export class Beetle extends BaseEnemy {
     update(now, width, height, unit) {
         this.angularPos += this.speed * (this.reverse ? -1 : 1);
         this.updatePos(unit);
+        
+        // Check if finished arc
+        if (this.reverse) {
+            if (this.angularPos <= this.startAngle) this.isDead = true;
+        } else {
+            if (this.angularPos >= this.endAngle) this.isDead = true;
+        }
     }
 }

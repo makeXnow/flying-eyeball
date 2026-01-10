@@ -14,11 +14,9 @@ export const MAX_ENEMIES = getGlobal('MAX_ENEMIES', 10);
 export const MAX_VISIBLE_QUEUE = getGlobal('MAX_VISIBLE_QUEUE', 10);
 
 // Global Spawn Settings
-export const SPAWN_SETTINGS = getGlobal('SPAWN_SETTINGS', {
-    startDelay: 3,
-    endDelay: 1,
-    rampDuration: 90
-});
+export const START_SPAWN = getGlobal('start_spawn', 2);
+export const MAX_SPAWN = getGlobal('max_spawn', 1);
+export const MAX_SPAWN_TIME = getGlobal('max_spawn_time', 90);
 
 // Test Enemy
 export const TEST_ENEMY = getGlobal('TEST_ENEMY', null);

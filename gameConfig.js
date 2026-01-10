@@ -11,14 +11,9 @@ window.MAX_VISIBLE_QUEUE = 10;
 window.TEST_ENEMY = null; 
 
 // Global Spawn Rules:
-// startDelay: Initial seconds between spawns
-// endDelay: Final seconds between spawns
-// rampDuration: Seconds it takes to reach endDelay
-window.SPAWN_SETTINGS = {
-    startDelay: 2,
-    endDelay: 1,
-    rampDuration: 90
-};
+window.start_spawn = 1;      // Initial seconds between spawns
+window.max_spawn = .3;        // Final seconds between spawns
+window.max_spawn_time = 120;  // Seconds it takes to reach max_spawn
 
 // Enemy Rules:
 // firstPts: Score needed to start spawning
@@ -43,6 +38,6 @@ window.REWARD_DATA = {
     '🫐': { pts: 1, min: 1, max: 3, size: 4, color: '#3b82f6' }, 
     '🍐': { pts: 3, min: 5, max: 8, size: 7, color: '#84cc16' }, 
     '🍋': { pts: 7, min: 10, max: 20, size: 6, color: '#eab308' }, 
-    '🍊': { pts: 12, min: 20, max: 30, size: 6, color: '#f97316' }, 
+    '🍊': { pts: 12, min: 20, max: 30, size: 7, color: '#f97316' }, 
     '🍒': { pts: 25, min: 30, max: 40, size: 5, color: '#ef4444' } 
 };

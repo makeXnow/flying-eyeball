@@ -1,8 +1,8 @@
-import { ENEMY_CONFIG, HERO_COLLISION_RADIUS, MAX_ENEMIES, MAX_VISIBLE_QUEUE, SPAWN_SETTINGS, TEST_ENEMY } from '../core/constants.js';
+import { ENEMY_CONFIG, HERO_COLLISION_RADIUS, MAX_ENEMIES, MAX_VISIBLE_QUEUE, TEST_ENEMY, START_SPAWN, MAX_SPAWN, MAX_SPAWN_TIME } from '../core/constants.js';
 import { Fly } from '../enemies/Fly.js';
 import { Beetle } from '../enemies/Beetle.js';
 import { Bee } from '../enemies/Bee.js';
-import { Ant } from '../enemies/Ant.js';
+import { Ant, AntGroup } from '../enemies/Ant.js';
 import { Spider } from '../enemies/Spider.js';
 import { Roach } from '../enemies/Roach.js';
 
@@ -17,32 +17,33 @@ export class EnemyManager {
     reset(now, gameStartTime) {
         this.enemies = [];
         this.queue = [];
-        // First spawn happens after a short delay to ensure everything is ready
+        // First spawn happens after a short delay
         this.nextSpawnTime = now + 500;
     }
 
     getSpawnInterval(elapsed) {
-        const { startDelay, endDelay, rampDuration } = SPAWN_SETTINGS;
-        const progress = Math.min(elapsed / (rampDuration * 1000), 1);
-        return startDelay - (startDelay - endDelay) * progress;
+        // Ramp from START_SPAWN to MAX_SPAWN over MAX_SPAWN_TIME
+        const progress = Math.min(elapsed / (MAX_SPAWN_TIME * 1000), 1);
+        return START_SPAWN - (START_SPAWN - MAX_SPAWN) * progress;
     }
 
     selectWeightedEnemy(currentScore) {
         const isTest = this.testerMode !== null;
         
         // Filter available enemies based on score threshold
-        const available = ENEMY_CONFIG.filter((config, index) => {
+        const available = ENEMY_CONFIG.filter((config) => {
             if (isTest) return config.emoji === this.testerMode;
             return currentScore >= config.firstPts;
         });
 
         if (available.length === 0) return null;
 
-        const totalWeight = available.reduce((sum, config) => sum + config.weight, 0);
+        const totalWeight = available.reduce((sum, config) => sum + (config.weight || 20), 0);
         let random = Math.random() * totalWeight;
 
         for (const config of available) {
-            random -= config.weight;
+            const weight = config.weight || 20;
+            random -= weight;
             if (random <= 0) {
                 // Return the index in the original ENEMY_CONFIG
                 return ENEMY_CONFIG.findIndex(c => c.emoji === config.emoji);
@@ -53,6 +54,7 @@ export class EnemyManager {
 
     spawn(index, width, height, unit) {
         const config = ENEMY_CONFIG[index];
+        if (!config) return;
         
         // Calculate spawn position from edge
         let x, y, angle;
@@ -88,13 +90,8 @@ export class EnemyManager {
                 this.queue.push(new Bee(width, height, unit));
                 break;
             case '🐜':
-                // Spawn a group of ants
-                const leader = new Ant(x, y, unit);
-                this.queue.push(leader);
-                const count = Math.floor(Math.random() * (config.groupMax - config.groupMin + 1)) + config.groupMin;
-                for (let i = 1; i < count; i++) {
-                    this.queue.push(new Ant(x, y, unit, leader, i * config.groupGap));
-                }
+                // Spawn a group of ants as a single unit
+                this.queue.push(new AntGroup(x, y, unit));
                 break;
             case '🕷️':
                 this.queue.push(new Spider(width, height, unit));
@@ -108,18 +105,21 @@ export class EnemyManager {
     update(now, width, height, unit, gameStartTime, rewards, hero, onGameOver, currentScore) {
         if (!unit || unit <= 0) return;
 
-        // Check if it's time to spawn
-        if (now >= this.nextSpawnTime) {
+        // Check if it's time to spawn (can spawn multiple to catch up)
+        let catchUpLimit = 0;
+        while (now >= this.nextSpawnTime && catchUpLimit < 5) {
             const enemyIndex = this.selectWeightedEnemy(currentScore);
             if (enemyIndex !== null) {
                 this.spawn(enemyIndex, width, height, unit);
                 
                 const elapsed = now - gameStartTime;
                 const interval = this.getSpawnInterval(elapsed);
-                this.nextSpawnTime = now + interval * 1000;
+                this.nextSpawnTime += interval * 1000;
+                catchUpLimit++;
             } else {
                 // If no enemy is available yet, check again soon
                 this.nextSpawnTime = now + 500;
+                break;
             }
         }
 
@@ -128,7 +128,7 @@ export class EnemyManager {
             this.enemies.push(this.queue.shift());
         }
 
-        // Update enemies
+        // Update active enemies
         for (let i = this.enemies.length - 1; i >= 0; i--) {
             const enemy = this.enemies[i];
             enemy.update(now, width, height, unit, rewards);

@@ -120,6 +120,11 @@ export class Hero {
         ctx.shadowColor = 'rgba(0,0,0,0.3)';
         ctx.fill();
 
+        // Add a very subtle outline to help visibility on white backgrounds
+        ctx.strokeStyle = 'rgba(0,0,0,0.05)';
+        ctx.lineWidth = unit * 0.5;
+        ctx.stroke();
+
         // Draw iris
         ctx.shadowBlur = 0;
         ctx.beginPath();
