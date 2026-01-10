@@ -20,7 +20,7 @@ window.ENEMY_CONFIG = [
     { emoji: '🪲', firstPts: 25,  weight: 20, size: 5, speed: 0.0025 },
     { emoji: '🐜', firstPts: 50,  weight: 20, size: 1.8, speed: 0.166, groupMin: 3, groupMax: 7, groupGap: 20 },
     { emoji: '🕷️', firstPts: 100, weight: 20, size: 4.8, speed: 0 },
-    { emoji: '🪳', firstPts: 150, weight: 20, size: 7,   speed: 0.5 }
+    { emoji: '🪳', firstPts: 150, weight: 20, size: 6,   speed: 0.5 }
 ];
 
 // Reward Rules:
