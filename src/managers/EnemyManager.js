@@ -7,13 +7,14 @@ import { Spider } from '../enemies/Spider.js';
 import { Roach } from '../enemies/Roach.js';
 
 // Enable for testing a specific enemy type (set to emoji like '🪰')
-const TEST_ENEMY = null;
+const TEST_ENEMY = '🐜';
 
 export class EnemyManager {
     constructor() {
         this.enemies = [];
         this.spawnTimers = {};
-        this.testerMode = TEST_ENEMY;
+        this.testerMode = '🐜'; // Forced ant mode
+        console.log('EnemyManager initialized. Forced Tester mode:', this.testerMode);
     }
 
     reset(now, gameStartTime) {

@@ -4,9 +4,11 @@ export class Roach extends BaseEnemy {
     constructor(x, y, angle, unit) {
         super({
             emoji: '🪳',
-            x, y, angle,
+            x: x,
+            y: y,
+            angle: angle,
             size: 3,
-            speed: 1.0 * unit,
+            speed: 0.5 * unit,
             orient: 'up'
         });
         this.vx = Math.cos(angle) * this.speed;

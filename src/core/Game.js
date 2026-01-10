@@ -72,6 +72,9 @@ export class Game {
 
         // Start game loop
         this.gameLoop();
+
+        // Draw first frame immediately
+        this.draw(this.getGameTime());
     }
 
     getGameTime() {

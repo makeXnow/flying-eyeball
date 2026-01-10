@@ -62,6 +62,8 @@ export class Renderer {
         
         const sprites = this.spriteCache.getAllSprites();
         
+        this.ctx.globalAlpha = opacity;
+
         // Draw rewards and floating texts
         rewardManager.draw(this.ctx, sprites, this.unit, now, opacity);
         
@@ -70,5 +72,7 @@ export class Renderer {
         
         // Draw hero
         hero.draw(this.ctx, sprites, this.unit, now);
+
+        this.ctx.globalAlpha = 1.0;
     }
 }

@@ -9,7 +9,7 @@ export class Bee extends BaseEnemy {
             emoji: '🐝',
             x: startX,
             y: Math.random() * height,
-            size: 2.4,
+            size: 3.6,
             speed: 0.4 * unit,
             orient: 'left'
         });

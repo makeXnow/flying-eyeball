@@ -138,9 +138,9 @@
             <span id="score-val">0</span>
         </div>
     </div>
+    <div id="joystick"><div id="joystick-knob"></div></div>
     <canvas id="gameCanvas"></canvas>
-    <div id="game-over" class="hidden absolute inset-0 flex-col items-center justify-start text-center" style="padding: calc(var(--u) * 4);">
-        <div class="h-[22%] w-full"></div>
+    <div id="game-over" class="hidden absolute flex flex-col items-center justify-end text-center" style="top: 13%; bottom: 13%; left: 0; right: 0; padding: calc(var(--u) * 4);">
         <h1 id="game-over-title" class="txt-title font-black text-blue-600 uppercase tracking-tight drop-shadow-sm" style="margin-bottom: calc(var(--u) * 3);">VISION LOST!</h1>
         <div class="w-full max-w-sm bg-white/95 shadow-2xl border border-gray-100 backdrop-blur-md flex flex-col items-center" style="padding: calc(var(--u) * 4); border-radius: calc(var(--u) * 6);">
             <div class="bg-blue-50 border-blue-200 shadow-sm w-full" style="border-radius: calc(var(--u) * 4); padding: calc(var(--u) * 3); margin-bottom: calc(var(--u) * 3); border-bottom-width: calc(var(--u) * 0.8);">
@@ -158,8 +158,366 @@
     </div>
 </div>
 
-<div id="joystick"><div id="joystick-knob"></div></div>
+<script>
+    // --- ENEMY CLASSES ---
+    class BaseEnemy {
+        constructor(config) {
+            this.emoji = config.emoji; this.x = config.x; this.y = config.y; this.size = config.size; this.speed = config.speed; this.orient = config.orient || 'up'; this.vx = config.vx || 0; this.vy = config.vy || 0; this.angle = config.angle || 0; this.isDead = false; this.canEatRewards = false;
+        }
+        update(now, width, height, unit) { this.x += this.vx; this.y += this.vy; }
+        draw(ctx, sprites, unit) {
+            ctx.save(); ctx.translate(this.x, this.y);
+            if (this.orient === 'up') ctx.rotate(Math.atan2(this.vy, this.vx) + Math.PI / 2);
+            else if (this.orient === 'left' && this.vx > 0) ctx.scale(-1, 1);
+            const sprite = sprites[this.emoji];
+            if (sprite) { const d = this.size * unit * 2; ctx.drawImage(sprite, -d/2, -d/2, d, d); }
+            ctx.restore();
+        }
+        isOffScreen(width, height, unit) { const bound = 40 * unit; return (this.x < -bound || this.x > width + bound || this.y < -bound || this.y > height + bound); }
+        checkCollision(heroX, heroY, heroRadius, unit) { const dist = Math.sqrt((heroX - this.x) ** 2 + (heroY - this.y) ** 2); return dist < (heroRadius + this.size * unit); }
+    }
 
-<script type="module" src="src/main.js"></script>
+    class Fly extends BaseEnemy {
+        constructor(x, y, angle, unit) {
+            super({ emoji: '🪰', x, y, angle, size: 3, speed: 0.3 * unit, orient: 'up' });
+            this.vx = Math.cos(angle) * this.speed; this.vy = Math.sin(angle) * this.speed;
+            this.distTraveled = 0; this.nextTurnAt = (Math.random() * 30 + 20) * unit;
+            this.targetAngle = angle; this.isRotating = false; this.rotationSpeed = 0.03;
+        }
+        update(now, width, height, unit) {
+            if (this.isRotating) {
+                let diff = this.targetAngle - this.angle;
+                while (diff > Math.PI) diff -= Math.PI * 2; while (diff < -Math.PI) diff += Math.PI * 2;
+                if (Math.abs(diff) < this.rotationSpeed) { this.angle = this.targetAngle; this.isRotating = false; this.distTraveled = 0; this.nextTurnAt = (Math.random() * 30 + 20) * unit; } 
+                else { this.angle += Math.sign(diff) * this.rotationSpeed; }
+                this.vx = Math.cos(this.angle) * this.speed; this.vy = Math.sin(this.angle) * this.speed; this.x += this.vx; this.y += this.vy;
+            } else {
+                super.update(now, width, height, unit); this.distTraveled += this.speed;
+                if (this.distTraveled >= this.nextTurnAt) { this.isRotating = true; this.targetAngle = this.angle + ((Math.random() * 85 - 45) * Math.PI / 180); }
+            }
+        }
+    }
+
+    class Beetle extends BaseEnemy {
+        constructor(width, height, unit) {
+            const diameter = (Math.random() * 100 + 100) * unit; const radius = diameter / 2; const penetration = radius * (Math.random() * 0.45 + 0.05);
+            const side = Math.floor(Math.random() * 4); let centerX, centerY;
+            if (side === 0) { centerX = Math.random() * width; centerY = -(radius - penetration); } 
+            else if (side === 1) { centerX = width + (radius - penetration); centerY = Math.random() * height; }
+            else if (side === 2) { centerX = Math.random() * width; centerY = height + (radius - penetration); } 
+            else { centerX = - (radius - penetration); centerY = Math.random() * height; }
+            super({ emoji: '🪲', x: 0, y: 0, size: 3.6, speed: 0.0025, orient: 'up' });
+            this.centerX = centerX; this.centerY = centerY; this.radius = radius;
+            const angleToCenter = Math.atan2((height/2) - centerY, (width/2) - centerX); const spread = Math.acos((radius - penetration) / radius);
+            const angularBuffer = (this.size * unit * 2) / radius;
+            this.startAngle = angleToCenter - spread - angularBuffer; this.endAngle = angleToCenter + spread + angularBuffer;
+            this.reverse = Math.random() < 0.5; this.angularPos = this.reverse ? this.endAngle : this.startAngle; this.wavePhase = 0; this.updatePos(unit);
+        }
+        updatePos(unit) {
+            const prevX = this.x, prevY = this.y;
+            this.wavePhase += 0.0375; const waveAmplitude = unit * 1; const dynamicRadius = this.radius + Math.sin(this.wavePhase) * waveAmplitude;
+            this.x = this.centerX + Math.cos(this.angularPos) * dynamicRadius; this.y = this.centerY + Math.sin(this.angularPos) * dynamicRadius;
+            this.vx = this.x - prevX; this.vy = this.y - prevY;
+        }
+        update(now, width, height, unit) { this.angularPos += this.speed * (this.reverse ? -1 : 1); this.updatePos(unit); }
+    }
+
+    class Bee extends BaseEnemy {
+        constructor(width, height, unit) {
+            const side = Math.random() < 0.5 ? 'left' : 'right'; const startX = side === 'left' ? -10 * unit : width + 10 * unit;
+            super({ emoji: '🐝', x: startX, y: Math.random() * height, size: 3.6, speed: 0.4 * unit, orient: 'left' });
+            this.horizontalDir = side === 'left' ? 1 : -1; this.vx = this.horizontalDir * this.speed; this.isGoingUp = Math.random() < 0.5; this.verticalSpeed = 0;
+        }
+        update(now, width, height, unit) {
+            if (Math.random() < 0.02) this.isGoingUp = !this.isGoingUp;
+            const targetVerticalSpeed = this.isGoingUp ? -5 * (unit * 0.05) : 3 * (unit * 0.05);
+            this.verticalSpeed += (targetVerticalSpeed - this.verticalSpeed) * 0.1;
+            this.x += this.vx; this.y += this.verticalSpeed;
+        }
+    }
+
+    class Ant extends BaseEnemy {
+        constructor(x, y, unit, leader = null, offset = 0) {
+            super({ emoji: '🐜', x, y, size: 1.8, speed: 0.25 * unit, orient: 'up' });
+            this.canEatRewards = true; this.leader = leader; this.offset = offset; this.history = [];
+            if (!leader) { const diagonals = [Math.PI/4, 3*Math.PI/4, 5*Math.PI/4, 7*Math.PI/4]; this.angle = diagonals[Math.floor(Math.random() * diagonals.length)]; }
+            this.phase = Math.random() * Math.PI * 2;
+        }
+        update(now, width, height, unit, rewards) {
+            if (!this.leader) {
+                this.phase += 0.08; const perpAngle = this.angle + Math.PI / 2; const wave = Math.cos(this.phase) * (unit * 0.1);
+                this.vx = Math.cos(this.angle) * this.speed + Math.cos(perpAngle) * wave; this.vy = Math.sin(this.angle) * this.speed + Math.sin(perpAngle) * wave;
+                this.x += this.vx; this.y += this.vy; this.history.push({ x: this.x, y: this.y, vx: this.vx, vy: this.vy });
+                if (this.history.length > 100) this.history.shift();
+            } else {
+                const targetIdx = this.leader.history.length - 1 - this.offset; const target = this.leader.history[Math.max(0, targetIdx)];
+                if (target) { this.x = target.x; this.y = target.y; this.vx = target.vx; this.vy = target.vy; }
+            }
+            this.angle = Math.atan2(this.vy, this.vx);
+            if (rewards) { for (let i = rewards.length - 1; i >= 0; i--) { const r = rewards[i]; const dist = Math.sqrt((this.x - r.x) ** 2 + (this.y - r.y) ** 2); if (dist < (this.size * unit + r.size)) rewards.splice(i, 1); } }
+        }
+        draw(ctx, sprites, unit) {
+            ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(Math.atan2(this.vy, this.vx) + Math.PI / 2);
+            const sprite = sprites[this.emoji]; if (sprite) { const d = this.size * unit * 2; ctx.drawImage(sprite, -d/2, -d/2, d, d); }
+            ctx.restore();
+        }
+    }
+
+    class Spider extends BaseEnemy {
+        constructor(width, height, unit) {
+            const targetX = Math.random() * (width - 40 * unit) + 20 * unit;
+            const targetY = Math.random() * (height - 40 * unit) + 20 * unit;
+            const startY = -10 * unit;
+            super({ emoji: '🕷️', x: targetX, y: startY, size: 4.8, speed: 0, orient: 'up' });
+            
+            this.targetX = targetX; this.targetY = targetY; this.startY = startY;
+            this.peekY = height * 0.05;
+            this.state = 'entering'; // entering, pausing, descending, waiting, ascending
+            this.progress = 0;
+            this.timer = 0;
+            
+            this.mainDescendDuration = 300;
+            this.mainAscendDuration = 120;
+            this.waitTimer = 0;
+            this.currentRotation = Math.PI; // Face down initially
+            this.turnDir = Math.random() < 0.5 ? 1 : -1;
+        }
+        update(now, width, height, unit) {
+            if (this.state === 'entering') {
+                this.progress += 1 / 60; // 1 second
+                const p = Math.min(1, this.progress);
+                const ease = 1 - (1 - p) * (1 - p);
+                this.y = this.startY + (this.peekY - this.startY) * ease;
+                if (this.progress >= 1) { this.state = 'pausing'; this.timer = now + 500; }
+            } else if (this.state === 'pausing') {
+                if (now >= this.timer) { this.state = 'descending'; this.progress = 0; }
+            } else if (this.state === 'descending') {
+                this.progress += 1 / this.mainDescendDuration;
+                const p = Math.min(1, this.progress);
+                const ease = 1 - Math.pow(1 - p, 3);
+                this.y = this.peekY + (this.targetY - this.peekY) * ease;
+                if (this.progress >= 1) { this.state = 'waiting'; this.waitTimer = now + (Math.random() * 1000 + 1500); this.progress = 0; }
+            } else if (this.state === 'waiting') {
+                const waitTotal = 1500;
+                const waitProgress = Math.max(0, 1 - (this.waitTimer - now) / waitTotal);
+                this.currentRotation = Math.PI + (waitProgress * Math.PI * this.turnDir);
+                if (now >= this.waitTimer) { this.state = 'ascending'; this.progress = 0; this.currentRotation = 0; }
+            } else if (this.state === 'ascending') {
+                this.progress += 1 / this.mainAscendDuration;
+                const p = Math.min(1, this.progress);
+                const ease = Math.pow(p, 3);
+                this.y = this.targetY - (this.targetY - this.startY) * ease;
+                if (this.progress >= 1) this.isDead = true;
+            }
+        }
+        draw(ctx, sprites, unit) {
+            ctx.save(); ctx.beginPath(); ctx.moveTo(this.x, 0); ctx.lineTo(this.x, this.y); ctx.strokeStyle = 'rgba(0, 0, 0, 0.1)'; ctx.lineWidth = 1; ctx.stroke(); ctx.restore();
+            ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(this.currentRotation);
+            const sprite = sprites[this.emoji]; if (sprite) { const d = this.size * unit * 2; ctx.drawImage(sprite, -d/2, -d/2, d, d); }
+            ctx.restore();
+        }
+    }
+
+    class Roach extends BaseEnemy {
+        constructor(x, y, angle, unit) {
+            super({ emoji: '🪳', x, y, angle, size: 3, speed: 0.5 * unit, orient: 'up' });
+            this.vx = Math.cos(angle) * this.speed; this.vy = Math.sin(angle) * this.speed;
+            this.distTraveled = 0; this.nextTurnAt = (Math.random() * 15 + 5) * unit;
+        }
+        update(now, width, height, unit) {
+            super.update(now, width, height, unit); this.distTraveled += this.speed;
+            if (this.distTraveled >= this.nextTurnAt) {
+                this.angle += (Math.random() * 160 - 80) * Math.PI / 180;
+                this.vx = Math.cos(this.angle) * this.speed; this.vy = Math.sin(this.angle) * this.speed;
+                this.distTraveled = 0; this.nextTurnAt = (Math.random() * 15 + 5) * unit;
+            }
+        }
+    }
+
+    const TEST_ENEMY = null; // Ant Tester Mode
+
+    class EnemyManager {
+        constructor() {
+            this.enemies = []; this.spawnTimers = {}; this.testerMode = TEST_ENEMY;
+            this.ENEMY_CONFIG = [
+                { emoji: '🪰', firstPts: 1, min: 3, max: 6 },
+                { emoji: '🐝', firstPts: 12, min: 5, max: 10 },
+                { emoji: '🪲', firstPts: 25, min: 3, max: 12 },
+                { emoji: '🐜', firstPts: 50, min: 7, max: 15 },
+                { emoji: '🕷️', firstPts: 100, min: 2, max: 5 },
+                { emoji: '🪳', firstPts: 150, min: 2, max: 4 }
+            ];
+        }
+        reset(now, startTime) { this.enemies = []; this.spawnTimers = {}; this.ENEMY_CONFIG.forEach((c, i) => this.schedule(i, now, startTime)); }
+        schedule(i, now, startTime) {
+            const c = this.ENEMY_CONFIG[i]; const isTest = this.testerMode !== null;
+            const randomWait = isTest ? 3000 : (Math.random() * (c.max - c.min) + c.min) * 1000;
+            this.spawnTimers[i] = now + randomWait;
+        }
+        spawn(i, width, height, unit) {
+            const c = this.ENEMY_CONFIG[i]; if (this.testerMode && c.emoji !== this.testerMode) return;
+            let x, y, angle, margin = 10 * unit, side = Math.floor(Math.random() * 4);
+            if (side === 0) { x = Math.random() * width; y = -margin; } else if (side === 1) { x = width + margin; y = Math.random() * height; }
+            else if (side === 2) { x = Math.random() * width; y = height + margin; } else { x = -margin; y = Math.random() * height; }
+            angle = Math.atan2((height / 2) - y, (width / 2) - x) + (Math.random() * 0.5 - 0.25);
+            if (c.emoji === '🪰') this.enemies.push(new Fly(x, y, angle, unit));
+            else if (c.emoji === '🪲') this.enemies.push(new Beetle(width, height, unit));
+            else if (c.emoji === '🐝') this.enemies.push(new Bee(width, height, unit));
+            else if (c.emoji === '🐜') {
+                const leader = new Ant(x, y, unit); this.enemies.push(leader);
+                const count = Math.floor(Math.random() * 3) + 3; for (let j = 1; j < count; j++) this.enemies.push(new Ant(x, y, unit, leader, j * 15));
+            } else if (c.emoji === '🕷️') this.enemies.push(new Spider(width, height, unit));
+            else if (c.emoji === '🪳') this.enemies.push(new Roach(x, y, angle, unit));
+        }
+        update(now, w, h, u, start, rewards, hero, over, currentScore) {
+            if (now - start < 1000) return; const isTest = this.testerMode !== null;
+            this.ENEMY_CONFIG.forEach((c, i) => { 
+                const scoreMet = isTest ? true : (currentScore >= c.firstPts);
+                if (scoreMet && now >= this.spawnTimers[i]) { this.spawn(i, w, h, u); this.schedule(i, now, start); } 
+            });
+            for (let i = this.enemies.length - 1; i >= 0; i--) {
+                const e = this.enemies[i]; e.update(now, w, h, u, rewards);
+                if (e.checkCollision(hero.x, hero.y, 10 * u, u)) { over(); break; }
+                if (e.isDead || e.isOffScreen(w, h, u)) this.enemies.splice(i, 1);
+            }
+        }
+        updateGameOver(unit) { this.enemies.forEach(e => { e.y += 2 * unit; }); }
+        draw(ctx, sprites, unit, opacity = 1) { ctx.save(); ctx.globalAlpha = opacity; this.enemies.forEach(e => e.draw(ctx, sprites, unit)); ctx.restore(); }
+    }
+
+    // --- GAME LOGIC ---
+    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz4ysJ9aIVSl1EhRGIAPhbdoZ267jL0cfcsfVAumCCpBkl-jeh1voKdiEVylWmDjPJl/exec';
+    const SPRITE_RESOLUTION = 256; const sprites = {};
+    const enemyManager = new EnemyManager();
+    const DEATH_MESSAGES = ["Vision Lost!", "Eye Contact Broken!", "You Blinked!", "Blinked Too Soon!", "Lost Sight!", "Eyes Up Next Time!", "Visual Feed Lost!", "Target Out of Sight!", "Retinal Error!", "Nice Try, Big Eye!"];
+    const REWARD_DATA = { '🫐': { pts: 1, min: 1, max: 3, size: 3.6, color: '#3b82f6' }, '🍐': { pts: 3, min: 5, max: 8, size: 6, color: '#84cc16' }, '🍋': { pts: 7, min: 10, max: 20, size: 8.4, color: '#eab308' }, '🍊': { pts: 12, min: 20, max: 30, size: 4.8, color: '#f97316' }, '🍒': { pts: 25, min: 30, max: 40, size: 4.8, color: '#ef4444' } };
+
+    let hero = { x: 0, y: 0, vx: 0, vy: 0, colorBursts: [], eyeLookX: 0, eyeLookY: 0, baseSpeed: 5 };
+    let rewards = [], floatingTexts = [], spawnTimers = { rewards: {} };
+    let width, height, unit, score = 0, gameActive = true, isFetching = false, isWindowVisible = true;
+    let scores = [], lastPlayerName = "", gameStartTime = 0, totalPauseTime = 0, lastPauseStarted = 0;
+    let isGameOverAnimating = false, gameOverStartTime = 0;
+    const canvas = document.getElementById('gameCanvas'), ctx = canvas.getContext('2d');
+    const joystickEl = document.getElementById('joystick'), knobEl = document.getElementById('joystick-knob');
+    const scoreVal = document.getElementById('score-val'), dashboardScore = document.getElementById('dashboard-score');
+    const finalScoreVal = document.getElementById('final-score'), gameOverScreen = document.getElementById('game-over');
+    const gameOverTitle = document.getElementById('game-over-title'), leaderboardList = document.getElementById('leaderboard-list'), restartBtn = document.getElementById('restart-btn');
+
+    async function fetchLeaderboard() {
+        if (isFetching) return; isFetching = true;
+        try {
+            const res = await fetch(`${SCRIPT_URL}?action=list&v=${Math.random()}`, { method: 'GET', cache: 'no-cache' });
+            const text = await res.text(); let data = JSON.parse(text);
+            const allRows = data.version === "7.2" ? (data.rows || []) : (Array.isArray(data) ? data : []);
+            const rawRows = allRows.slice(1);
+            scores = rawRows.map(row => ({ name: row.name || "Anonymous", score: parseFloat(row.score) || 0 })).sort((a, b) => b.score - a.score).slice(0, 5);
+            renderLeaderboard();
+        } catch (err) { console.error("Leaderboard Pull Error:", err); } finally { isFetching = false; }
+    }
+    async function saveScore(name, scoreValue) { try { const params = new URLSearchParams({ name, score: scoreValue, action: 'append' }); await fetch(`${SCRIPT_URL}?${params.toString()}`, { method: 'GET', mode: 'no-cors', cache: 'no-cache' }); } catch (err) { console.error("Score Push Error:", err); } }
+
+    function renderLeaderboard() {
+        if (!gameActive) {
+            let tempScores = [...scores]; let fitsAt = -1;
+            for(let i=0; i<5; i++) { if (!tempScores[i] || score > tempScores[i].score) { fitsAt = i; break; } }
+            if (fitsAt !== -1 && score > 0) { tempScores.splice(fitsAt, 0, { name: "__INPUT__", score: score }); tempScores = tempScores.slice(0, 5); }
+            leaderboardList.innerHTML = tempScores.map((s, i) => {
+                const rankIcon = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : ''; const isEntry = s.name === "__INPUT__";
+                return `<div class="leaderboard-item ${isEntry ? 'bg-blue-50 py-6 ring-2 ring-blue-400' : ''}"><div class="flex items-center gap-3 flex-1 mr-4"><span class="text-[10px] text-gray-300 w-3">${i+1}</span>${isEntry ? `<input type="text" id="high-score-name" value="${lastPlayerName}" maxlength="12" class="name-input" placeholder="ENTER YOUR NAME" oninput="window.updateRestartButton()">` : `<span class="txt-lb-name tracking-tight text-gray-600 truncate max-w-[120px]">${s.name} ${rankIcon}</span>`}</div><span class="txt-lb-score text-blue-500 font-black">${s.score}</span></div>`;
+            }).join(''); window.updateRestartButton();
+        } else {
+            leaderboardList.innerHTML = scores.length > 0 ? scores.map((s, i) => `<div class="leaderboard-item"><div class="flex items-center gap-3"><span class="text-[10px] text-gray-300 w-3">${i+1}</span><span class="txt-lb-name tracking-tight text-gray-600 truncate max-w-[120px]">${s.name} ${i<3?['🥇','🥈','🥉'][i]:''}</span></div><span class="txt-lb-score text-blue-500 font-black">${s.score}</span></div>`).join('') : `<div class="py-6 text-gray-300 italic text-center txt-lb-name">No records yet...</div>`;
+        }
+    }
+    window.updateRestartButton = () => { const inputField = document.getElementById('high-score-name'); restartBtn.innerText = (inputField && inputField.value.trim().length > 0) ? "Save & Play Again" : "Play Again"; };
+    function handleRestart() { const nameInput = document.getElementById('high-score-name'); if (nameInput && nameInput.value.trim().length > 0) { const name = nameInput.value.trim(); lastPlayerName = name; saveScore(name, score); } resetGame(); }
+    function preRenderSprites() {
+        const emojis = new Set(Object.keys(REWARD_DATA)); enemyManager.ENEMY_CONFIG.forEach(e => emojis.add(e.emoji)); emojis.add('🪽');
+        emojis.forEach(emoji => { const off = document.createElement('canvas'); off.width = off.height = SPRITE_RESOLUTION; const octx = off.getContext('2d'); octx.font = `${SPRITE_RESOLUTION * 0.8}px serif`; octx.textAlign = 'center'; octx.textBaseline = 'middle'; octx.fillText(emoji, SPRITE_RESOLUTION / 2, SPRITE_RESOLUTION / 2); sprites[emoji] = off; });
+    }
+    function getGameTime() { return isWindowVisible ? Date.now() - totalPauseTime : lastPauseStarted - totalPauseTime; }
+    function scheduleReward(emoji, now) { const d = REWARD_DATA[emoji]; spawnTimers.rewards[emoji] = now + (Math.random() * (d.max - d.min) + d.min) * 1000; }
+    function initTimers() { const now = getGameTime(); Object.keys(REWARD_DATA).forEach(k => scheduleReward(k, now)); enemyManager.reset(now, gameStartTime); }
+    function spawnReward(emoji) { const d = REWARD_DATA[emoji]; rewards.push({ emoji, x: Math.random() * (width - 40 * unit) + 20 * unit, y: Math.random() * (height - 40 * unit) + 20 * unit, size: d.size * unit, growProgress: 0, pts: d.pts }); }
+    function drawHero(ctx, x, y, sc, now, lookX, lookY, bursts) {
+        ctx.save(); ctx.translate(x, y); const s10 = 10 * sc, s5 = 5 * sc, s2 = 2 * sc, s6 = 6 * sc;
+        const flapAngle = (now % 600 < 400) ? (now % 600 / 400) * (-30 * Math.PI / 180) : (1 - (now % 600 - 400) / 200) * (-30 * Math.PI / 180);
+        const wingSprite = sprites['🪽']; if (wingSprite) [1, -1].forEach(s => { ctx.save(); ctx.scale(s, 1); ctx.rotate(flapAngle); ctx.drawImage(wingSprite, (s10 + 4 * sc) - (s6 * 3.75)/2, -(s6 * 3.75)/2, s6 * 3.75, s6 * 3.75); ctx.restore(); });
+        ctx.beginPath(); ctx.arc(0, 0, s10, 0, Math.PI * 2); ctx.fillStyle = 'white'; ctx.shadowBlur = sc * 4.5; ctx.shadowColor = 'rgba(0,0,0,0.3)'; ctx.fill();
+        ctx.shadowBlur = 0; ctx.beginPath(); ctx.arc(lookX, lookY, s5, 0, Math.PI * 2); ctx.fillStyle = '#888'; ctx.fill();
+        bursts.forEach(b => {
+            const e = now - b.time; if (e < 2250) {
+                ctx.save(); ctx.beginPath(); ctx.arc(lookX, lookY, s5, 0, Math.PI * 2);
+                if (e < 750) { const p = e / 750, g = ctx.createRadialGradient(lookX, lookY, 0, lookX, lookY, s5); g.addColorStop(0, b.color); g.addColorStop(Math.max(0, p - 0.3), b.color); g.addColorStop(Math.min(1, p + 0.3), 'rgba(0,0,0,0)'); ctx.fillStyle = g; }
+                else { ctx.globalAlpha = e < 1750 ? 1 : 1 - (e - 1750)/500; ctx.fillStyle = b.color; }
+                ctx.fill(); ctx.restore();
+            }
+        });
+        ctx.beginPath(); ctx.arc(lookX * 1.5, lookY * 1.5, s2, 0, Math.PI * 2); ctx.fillStyle = 'black'; ctx.fill(); ctx.restore();
+    }
+    function resize() {
+        const rect = document.getElementById('game-container').getBoundingClientRect(); const dpr = window.devicePixelRatio || 1; width = rect.width; height = rect.height; canvas.width = width * dpr; canvas.height = height * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0); unit = height / 200; document.documentElement.style.setProperty('--u', `${unit}px`); hero.x = width / 2; hero.y = height * 0.15;
+    }
+    function update(now) {
+        if (!isWindowVisible) return;
+        if (isGameOverAnimating) {
+            const progress = (now - gameOverStartTime) / 500;
+            const oldY = hero.y; hero.y = height * 0.15 + Math.sin(now * 0.003) * (unit * 4);
+            hero.x = width / 2;
+            const dy = hero.y - oldY, lookDist = Math.min(Math.abs(dy * 10) / unit, 1) * (2.4 * unit), lookAngle = dy >= 0 ? Math.PI / 2 : -Math.PI / 2;
+            hero.eyeLookX += (0 - hero.eyeLookX) * 0.1; hero.eyeLookY += (Math.sin(lookAngle) * lookDist - hero.eyeLookY) * 0.1;
+            if (progress >= 1) { isGameOverAnimating = false; gameOverActual(); }
+            else { enemyManager.updateGameOver(unit); rewards.forEach(r => r.y += 2 * unit); floatingTexts.forEach(t => t.y += 2 * unit); }
+            return;
+        }
+        if (!gameActive) {
+            const oldY = hero.y; hero.y = height * 0.15 + Math.sin(now * 0.003) * (unit * 4);
+            hero.x = width / 2;
+            const dy = hero.y - oldY, lookDist = Math.min(Math.abs(dy * 10) / unit, 1) * (2.4 * unit), lookAngle = dy >= 0 ? Math.PI / 2 : -Math.PI / 2;
+            hero.eyeLookX += (0 - hero.eyeLookX) * 0.1; hero.eyeLookY += (Math.sin(lookAngle) * lookDist - hero.eyeLookY) * 0.1;
+            return;
+        }
+        const inputDx = input.currX - input.startX, inputDy = input.currY - input.startY;
+        if (input.active) { 
+            const dx = input.currX - input.startX, dy = input.currY - input.startY, dist = Math.sqrt(dx * dx + dy * dy);
+            const p = Math.min(dist, unit * 8) / (unit * 8), a = Math.atan2(dy, dx);
+            hero.vx = Math.cos(a) * p * hero.baseSpeed; hero.vy = Math.sin(a) * p * hero.baseSpeed;
+        } else { hero.vx *= 0.9; hero.vy *= 0.9; }
+        hero.x = Math.max(unit * 10, Math.min(width - unit * 10, hero.x + hero.vx)); hero.y = Math.max(unit * 10, Math.min(height - unit * 10, hero.y + hero.vy));
+        const lookAngle = Math.atan2(inputDy, inputDx), lookDist = input.active ? Math.min(Math.sqrt(inputDx*inputDx + inputDy*inputDy) / (10 * unit), 1) * (2.4 * unit) : 0; hero.eyeLookX += (Math.cos(lookAngle) * lookDist - hero.eyeLookX) * 0.1; hero.eyeLookY += (Math.sin(lookAngle) * lookDist - hero.eyeLookY) * 0.1;
+        Object.keys(REWARD_DATA).forEach(emoji => { if (rewards.length < 10 && now >= spawnTimers.rewards[emoji]) { spawnReward(emoji); scheduleReward(emoji, now); } });
+        for (let i = rewards.length - 1; i >= 0; i--) { const r = rewards[i]; r.growProgress = Math.min(1, r.growProgress + 0.02); const dist = Math.sqrt((hero.x - r.x) ** 2 + (hero.y - r.y) ** 2); if (dist < (8 * unit + r.size)) { score += r.pts; scoreVal.innerText = score; hero.colorBursts.push({ time: now, color: REWARD_DATA[r.emoji].color }); floatingTexts.push({ x: r.x, y: r.y, txt: `+${r.pts}`, time: now, color: REWARD_DATA[r.emoji].color }); rewards.splice(i, 1); } }
+        for (let i = floatingTexts.length - 1; i >= 0; i--) { if (now - floatingTexts[i].time > 1000) floatingTexts.splice(i, 1); }
+        enemyManager.update(now, width, height, unit, gameStartTime, rewards, hero, gameOver, score);
+    }
+    function draw(now) {
+        ctx.clearRect(0, 0, width, height);
+        let opacity = 1;
+        if (isGameOverAnimating) opacity = 1 - Math.min(1, (now - gameOverStartTime) / 500);
+        else if (!gameActive) opacity = 0;
+        
+        rewards.forEach(r => { const sprite = sprites[r.emoji]; if (sprite) { const s = r.size * r.growProgress * 2; ctx.save(); ctx.globalAlpha = r.growProgress * opacity; ctx.drawImage(sprite, r.x - s/2, r.y - s/2, s, s); ctx.restore(); } });
+        enemyManager.draw(ctx, sprites, unit, opacity);
+        drawHero(ctx, hero.x, hero.y, unit, now, hero.eyeLookX, hero.eyeLookY, hero.colorBursts);
+        floatingTexts.forEach(t => { const p = (now - t.time) / 1000; ctx.save(); ctx.globalAlpha = (1 - p) * opacity; ctx.fillStyle = t.color; ctx.font = `bold ${unit * (4 + p * 4)}px sans-serif`; ctx.textAlign = 'center'; ctx.fillText(t.txt, t.x, t.y - p * unit * 10); ctx.restore(); });
+    }
+    function gameOver() { if (!gameActive || isGameOverAnimating) return; gameActive = false; isGameOverAnimating = true; gameOverStartTime = getGameTime(); }
+    function gameOverActual() { finalScoreVal.innerText = score; dashboardScore.style.visibility = 'hidden'; gameOverTitle.innerText = DEATH_MESSAGES[Math.floor(Math.random() * DEATH_MESSAGES.length)]; gameOverScreen.style.display = 'flex'; renderLeaderboard(); }
+    function resetGame() { fetchLeaderboard(); score = 0; scoreVal.innerText = '0'; dashboardScore.style.visibility = 'visible'; hero.vx = hero.vy = 0; hero.colorBursts = []; rewards = []; floatingTexts = []; gameOverScreen.style.display = 'none'; totalPauseTime = 0; gameStartTime = getGameTime(); initTimers(); gameActive = true; isGameOverAnimating = false; }
+    
+    let input = { active: false, startX: 0, startY: 0, currX: 0, currY: 0 };
+    canvas.addEventListener('mousedown', e => { if (!gameActive) return; input.active = true; input.startX = input.currX = e.clientX - canvas.getBoundingClientRect().left; input.startY = input.currY = e.clientY - canvas.getBoundingClientRect().top; joystickEl.style.display = 'block'; joystickEl.style.left = `${input.startX - 8 * unit}px`; joystickEl.style.top = `${input.startY - 8 * unit}px`; });
+    window.addEventListener('mousemove', e => { if (!input.active) return; input.currX = e.clientX - canvas.getBoundingClientRect().left; input.currY = e.clientY - canvas.getBoundingClientRect().top; const dx = input.currX - input.startX, dy = input.currY - input.startY, d = Math.min(Math.sqrt(dx*dx+dy*dy), 8 * unit), a = Math.atan2(dy, dx); knobEl.style.transform = `translate(calc(-50% + ${Math.cos(a)*d}px), calc(-50% + ${Math.sin(a)*d}px))`; });
+    window.addEventListener('mouseup', () => { input.active = false; joystickEl.style.display = 'none'; });
+    document.addEventListener("visibilitychange", () => { if (document.hidden) { isWindowVisible = false; lastPauseStarted = Date.now(); } else { if (lastPauseStarted > 0) totalPauseTime += (Date.now() - lastPauseStarted); isWindowVisible = true; } });
+    window.addEventListener('resize', resize);
+    canvas.addEventListener('touchstart', (e) => { e.preventDefault(); const touch = e.touches[0], rect = canvas.getBoundingClientRect(); if (!gameActive) return; input.active = true; input.startX = input.currX = touch.clientX - rect.left; input.startY = input.currY = touch.clientY - rect.top; joystickEl.style.display = 'block'; joystickEl.style.left = `${input.startX - 8 * unit}px`; joystickEl.style.top = `${input.startY - 8 * unit}px`; });
+    canvas.addEventListener('touchmove', (e) => { e.preventDefault(); const touch = e.touches[0], rect = canvas.getBoundingClientRect(); if (!input.active) return; input.currX = touch.clientX - rect.left; input.currY = touch.clientY - rect.top; const dx = input.currX - input.startX, dy = input.currY - input.startY, d = Math.min(Math.sqrt(dx*dx+dy*dy), 8 * unit), a = Math.atan2(dy, dx); knobEl.style.transform = `translate(calc(-50% + ${Math.cos(a)*d}px), calc(-50% + ${Math.sin(a)*d}px))`; });
+    canvas.addEventListener('touchend', () => { input.active = false; joystickEl.style.display = 'none'; });
+    restartBtn.addEventListener('click', handleRestart);
+
+    function gameLoop() { const now = getGameTime(); update(now); draw(now); requestAnimationFrame(gameLoop); }
+    window.onload = () => { preRenderSprites(); resize(); fetchLeaderboard(); gameStartTime = getGameTime(); initTimers(); gameLoop(); };
+</script>
 </body>
 </html>
