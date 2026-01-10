@@ -1,0 +1,7 @@
+.DS_Store
+Archive.zip
+node_modules/
+dist/
+build/
+*.log
+.cursor/

@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Flying Eyeball</title>
+    
+    <!-- PWA & Mobile -->
+    <link rel="manifest" href="manifest.json?v=2">
+    <link rel="icon" type="image/png" href="icon.png?v=2">
+    <link rel="apple-touch-icon" href="icon.png?v=2">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#3b82f6">
+
+    <!-- Share Image (Open Graph) -->
+    <meta property="og:title" content="Flying Eyeball">
+    <meta property="og:description" content="Global leaderboard flying eyeball game!">
+    <meta property="og:image" content="icon.png">
+    <meta property="og:type" content="website">
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Flying Eyeball">
+    <meta name="twitter:description" content="Global leaderboard flying eyeball game!">
+    <meta name="twitter:image" content="icon.png">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root {
+            --u: 1vh; /* Base unit updated by JS based on container height */
+        }
+        /* Ensure html and body take up exactly the visible space */
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+        body {
+            background-color: #f3f4f6;
+            touch-action: none;
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+            /* Use dvh to account for mobile browser UI (address bars) */
+            height: 100dvh; 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        #game-container {
+            position: relative;
+            /* Occupy the full height available but never more */
+            height: 100%;
+            max-height: 100%;
+            max-width: 100%;
+            aspect-ratio: 9 / 16;
+            background: white;
+            box-shadow: 0 0 50px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            image-rendering: auto;
+        }
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            pointer-events: none;
+            padding: calc(var(--u) * 4);
+            z-index: 100;
+        }
+        #joystick {
+            position: absolute;
+            width: calc(var(--u) * 16);
+            height: calc(var(--u) * 16);
+            background: rgba(0, 0, 0, 0.05);
+            border: 2px solid rgba(0, 0, 0, 0.1);
+            border-radius: 50%;
+            pointer-events: none;
+            display: none;
+            z-index: 20;
+        }
+        #joystick-knob {
+            position: absolute;
+            width: calc(var(--u) * 6);
+            height: calc(var(--u) * 6);
+            background: rgba(0, 0, 0, 0.15);
+            border-radius: 50%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+        .leaderboard-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: calc(var(--u) * 1.5) calc(var(--u) * 2);
+            border-bottom: 1px solid rgba(0,0,0,0.03);
+        }
+        .leaderboard-item:last-child { border-bottom: none; }
+        
+        #game-over {
+            pointer-events: none;
+            z-index: 50;
+        }
+        #game-over > * {
+            pointer-events: auto;
+        }
+
+        .txt-score { font-size: calc(var(--u) * 10); }
+        .txt-title { font-size: calc(var(--u) * 5.5); }
+        .txt-score-label { font-size: calc(var(--u) * 5); }
+        .txt-final-score { font-size: calc(var(--u) * 10); }
+        .txt-btn { font-size: calc(var(--u) * 4); }
+        .txt-lb-header { font-size: calc(var(--u) * 4); }
+        .txt-lb-name { font-size: calc(var(--u) * 3); }
+        .txt-lb-score { font-size: calc(var(--u) * 3.5); }
+        
+        .name-input {
+            background: #fff;
+            border: 2px solid #3b82f6;
+            border-radius: calc(var(--u) * 1.5);
+            padding: calc(var(--u) * 1.5) calc(var(--u) * 2);
+            width: 100%;
+            outline: none;
+            font-size: max(16px, calc(var(--u) * 3.2));
+            color: #1e40af;
+            text-transform: uppercase;
+            font-weight: 900;
+            text-align: center;
+        }
+        .name-input::placeholder {
+            color: #cbd5e1;
+            font-weight: 700;
+            text-transform: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="game-container">
+        <div id="ui-layer">
+        <div id="dashboard-score" class="txt-score font-black text-black/25 text-left">
+            <span id="score-val">0</span>
+        </div>
+    </div>
+
+    <div id="joystick">
+        <div id="joystick-knob"></div>
+    </div>
+
+    <canvas id="gameCanvas"></canvas>
+
+    <div id="game-over" class="absolute inset-0 hidden flex-col items-center justify-start p-6 text-center">
+        <div class="h-[22%] w-full"></div>
+    <h1 id="game-over-title" class="txt-title font-black text-blue-600 uppercase tracking-tight mb-4 drop-shadow-sm">VISION LOST!</h1>
+        <div class="w-full max-w-sm bg-white/95 p-6 rounded-[2.5rem] shadow-2xl border border-gray-100 backdrop-blur-md flex flex-col items-center">
+            <div class="bg-blue-50 rounded-3xl p-5 mb-4 border-b-4 border-blue-200 shadow-sm w-full">
+                <p class="text-blue-400 font-bold uppercase tracking-widest mb-1 txt-score-label">Your Score</p>
+                <p class="txt-final-score font-black text-blue-700"><span id="final-score">0</span></p>
+            </div>
+            <div class="w-full bg-white rounded-2xl overflow-hidden mb-6 shadow-sm border border-gray-100 text-left">
+                <div class="bg-gray-50 py-3 border-bottom border-gray-100 font-black text-gray-400 tracking-[0.2em] uppercase text-center txt-lb-header">
+                    🏆 Global Top 5 🏆
+                </div>
+                <div id="leaderboard-list" class="text-gray-700 font-bold">
+                    <div class="py-6 text-gray-300 italic text-center txt-lb-name">Syncing Feed...</div>
+                </div>
+            </div>
+            <button id="restart-btn" class="bg-blue-500 hover:bg-blue-600 text-white px-10 py-4 rounded-2xl font-black shadow-[0_6px_0_rgb(37,99,235)] transition-all active:shadow-none active:translate-y-1 w-full uppercase tracking-wider txt-btn">
+                Play Again
+            </button>
+        </div>
+    </div>
+</div>
+
+<script type="module">
+    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz4ysJ9aIVSl1EhRGIAPhbdoZ267jL0cfcsfVAumCCpBkl-jeh1voKdiEVylWmDjPJl/exec';
+
+    // Update OG and Twitter image dynamically if needed
+    // document.querySelector('meta[property="og:image"]').setAttribute('content', window.location.origin + '/icon.png');
+    // document.querySelector('meta[name="twitter:image"]').setAttribute('content', window.location.origin + '/icon.png');
+
+    // --- SPRITE SYSTEM ---
+    const SPRITE_RESOLUTION = 256;
+    const sprites = {};
+
+    function preRenderSprites() {
+        const emojis = new Set();
+        Object.keys(REWARD_DATA).forEach(k => emojis.add(k));
+        ENEMY_DATA.forEach(e => emojis.add(e.emoji));
+        emojis.add('🪽'); 
+        
+        emojis.forEach(emoji => {
+            const offscreen = document.createElement('canvas');
+            offscreen.width = SPRITE_RESOLUTION;
+            offscreen.height = SPRITE_RESOLUTION;
+            const octx = offscreen.getContext('2d');
+            octx.font = `${SPRITE_RESOLUTION * 0.8}px serif`;
+            octx.textAlign = 'center';
+            octx.textBaseline = 'middle';
+            octx.fillText(emoji, SPRITE_RESOLUTION / 2, SPRITE_RESOLUTION / 2);
+            sprites[emoji] = offscreen;
+        });
+    }
+
+    // --- GAME STATE ---
+    let scores = [];
+    let lastPlayerName = ""; 
+    let width, height, unit;
+    let score = 0;
+    let gameActive = true;
+    let isFetching = false;
+    
+    let gameStartTime = 0;
+    let isWindowVisible = true;
+    let totalPauseTime = 0;
+    let lastPauseStarted = 0;
+
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const joystickEl = document.getElementById('joystick');
+    const knobEl = document.getElementById('joystick-knob');
+    const scoreVal = document.getElementById('score-val');
+    const dashboardScore = document.getElementById('dashboard-score');
+    const finalScoreVal = document.getElementById('final-score');
+    const gameOverScreen = document.getElementById('game-over');
+    const gameOverTitle = document.getElementById('game-over-title');
+    const leaderboardList = document.getElementById('leaderboard-list');
+    const restartBtn = document.getElementById('restart-btn');
+
+    const DEATH_MESSAGES = [
+        "Vision Lost!", "Eye Contact Broken!", "You Blinked!", "Blinked Too Soon!",
+        "Lost Sight!", "Eyes Up Next Time!", "Visual Feed Lost!",
+        "Target Out of Sight!", "Retinal Error!", "Nice Try, Big Eye!"
+    ];
+
+    const REWARD_DATA = {
+        '🫐': { pts: 1, min: 1, max: 3, size: 3.6, color: '#3b82f6' },
+        '🍐': { pts: 3, min: 5, max: 8, size: 6, color: '#84cc16' },
+        '🍋': { pts: 7, min: 10, max: 20, size: 8.4, color: '#eab308' },
+        '🍊': { pts: 12, min: 20, max: 30, size: 4.8, color: '#f97316' },
+        '🍒': { pts: 25, min: 30, max: 40, size: 4.8, color: '#ef4444' }
+    };
+
+    const ENEMY_DATA = [
+        { emoji: '🪰', first: 0, speed: 1.5, size: 6, min: 3, max: 6, orient: 'up', strideMin: 20, strideMax: 60, turnDeg: 45 },
+        { emoji: '🪲', first: 5, speed: 3, size: 7.2, min: 3, max: 12, orient: 'up', strideMin: 100, strideMax: 200, turnDeg: 15 },
+        { emoji: '🐝', first: 10, speed: 2.5, size: 4.8, min: 5, max: 10, orient: 'left', strideMin: 60, strideMax: 120, turnDeg: 30 },
+        { emoji: '🐜', first: 20, speed: 1.5, size: 3.6, min: 7, max: 15, orient: 'left', strideMin: 40, strideMax: 80, turnDeg: 40 },
+        { emoji: '🕷️', first: 40, speed: 4, size: 4.8, min: 2, max: 5, orient: 'up', strideMin: 200, strideMax: 400, turnDeg: 10 },
+        { emoji: '🪳', first: 80, speed: 10, size: 6, min: 2, max: 4, orient: 'up', strideMin: 5, strideMax: 20, turnDeg: 80 }
+    ];
+
+    let hero = {
+        x: 0, y: 0, vx: 0, vy: 0, colorBursts: [],
+        eyeLookX: 0, eyeLookY: 0, baseSpeed: 5
+    };
+
+    let rewards = [];
+    let enemies = [];
+    let floatingTexts = [];
+    let spawnTimers = { rewards: {}, enemies: {} };
+    let input = { active: false, startX: 0, startY: 0, currX: 0, currY: 0 };
+
+    async function fetchLeaderboard() {
+        if (isFetching) return;
+        isFetching = true;
+        try {
+            const res = await fetch(`${SCRIPT_URL}?action=list&v=${Math.random()}`, {
+                method: 'GET', cache: 'no-cache'
+            });
+            const text = await res.text();
+            let data = JSON.parse(text);
+            const allRows = data.version === "7.2" ? (data.rows || []) : (Array.isArray(data) ? data : []);
+            const rawRows = allRows.slice(1);
+            scores = rawRows.map(row => ({ 
+                name: row.name || "Anonymous", 
+                score: parseFloat(row.score) || 0 
+            })).sort((a, b) => b.score - a.score).slice(0, 5);
+            renderLeaderboard();
+        } catch (err) { console.error("Leaderboard Pull Error:", err); }
+        finally { isFetching = false; }
+    }
+
+    async function saveScore(name, scoreValue) {
+        try {
+            const params = new URLSearchParams({ name, score: scoreValue, action: 'append' });
+            await fetch(`${SCRIPT_URL}?${params.toString()}`, { method: 'GET', mode: 'no-cors', cache: 'no-cache' });
+        } catch (err) { console.error("Score Push Error:", err); }
+    }
+
+    function getGameTime() {
+        if (!isWindowVisible) return lastPauseStarted - totalPauseTime;
+        return Date.now() - totalPauseTime;
+    }
+
+    function scheduleReward(emoji, now) {
+        const data = REWARD_DATA[emoji];
+        spawnTimers.rewards[emoji] = now + (Math.random() * (data.max - data.min) + data.min) * 1000;
+    }
+
+    function scheduleEnemy(index, now) {
+        const data = ENEMY_DATA[index];
+        const unlockTime = gameStartTime + (data.first * 1000);
+        const randomWait = (Math.random() * (data.max - data.min) + data.min) * 1000;
+        spawnTimers.enemies[index] = Math.max(unlockTime, now + randomWait);
+    }
+
+    function initTimers() {
+        const now = getGameTime();
+        Object.keys(REWARD_DATA).forEach(key => scheduleReward(key, now));
+        ENEMY_DATA.forEach((_, index) => scheduleEnemy(index, now));
+    }
+
+    function spawnReward(emoji) {
+        const data = REWARD_DATA[emoji];
+        rewards.push({
+            emoji, x: Math.random() * (width - 40 * unit) + 20 * unit,
+            y: Math.random() * (height - 40 * unit) + 20 * unit,
+            size: data.size * unit, growProgress: 0, pts: data.pts
+        });
+    }
+
+    function spawnEnemy(index) {
+        const data = ENEMY_DATA[index];
+        let x, y, side = Math.floor(Math.random() * 4);
+        if (side === 0) { x = Math.random() * width; y = -50; } 
+        else if (side === 1) { x = width + 50; y = Math.random() * height; } 
+        else if (side === 2) { x = Math.random() * width; y = height + 50; } 
+        else { x = -50; y = Math.random() * height; }
+        const angle = Math.atan2((height / 2) - y, (width / 2) - x) + (Math.random() * 0.5 - 0.25);
+        enemies.push({
+            emoji: data.emoji, x, y, angle, vx: Math.cos(angle) * data.speed, vy: Math.sin(angle) * data.speed,
+            size: data.size * unit, orient: data.orient, speed: data.speed,
+            strideMin: data.strideMin, strideMax: data.strideMax, turnDeg: data.turnDeg,
+            distTraveled: 0, nextTurnAt: (Math.random() * (data.strideMax - data.strideMin) + data.strideMin) * unit
+        });
+    }
+
+    function drawHero(targetCtx, x, y, sc, now, lookX, lookY, bursts) {
+        targetCtx.save();
+        targetCtx.translate(x, y);
+        const s10 = 8 * sc, s5 = 4 * sc, s2 = 1.6 * sc, s6 = 4.8 * sc;
+        const flapCycle = 600; 
+        const t = now % flapCycle;
+        let flapAngle = (t < 400) ? (t / 400) * (-30 * Math.PI / 180) : (1 - (t - 400) / 200) * (-30 * Math.PI / 180);
+        
+        const wingRadius = s10 + (4 * sc); 
+        const wingSprite = sprites['🪽'];
+        const wingSize = s6 * 3.75; 
+
+        [1, -1].forEach(side => {
+            targetCtx.save();
+            targetCtx.scale(side, 1);
+            targetCtx.rotate(flapAngle);
+            targetCtx.drawImage(wingSprite, wingRadius - wingSize/2, -wingSize/2, wingSize, wingSize);
+            targetCtx.restore();
+        });
+
+        targetCtx.beginPath(); targetCtx.arc(0, 0, s10, 0, Math.PI * 2); targetCtx.fillStyle = 'white'; 
+        targetCtx.shadowBlur = sc * 1.5; targetCtx.shadowColor = 'rgba(0,0,0,0.1)'; targetCtx.fill();
+        targetCtx.strokeStyle = '#f0f0f0'; targetCtx.lineWidth = 1; targetCtx.stroke();
+        targetCtx.beginPath(); targetCtx.arc(lookX, lookY, s5, 0, Math.PI * 2); targetCtx.fillStyle = '#888'; targetCtx.fill();
+        
+        bursts.forEach(burst => {
+            const elapsed = now - burst.time;
+            if (elapsed < 2250) {
+                targetCtx.save();
+                targetCtx.beginPath(); targetCtx.arc(lookX, lookY, s5, 0, Math.PI * 2);
+                if (elapsed < 750) {
+                    const p = elapsed / 750;
+                    const g = targetCtx.createRadialGradient(lookX, lookY, 0, lookX, lookY, s5);
+                    g.addColorStop(0, burst.color); g.addColorStop(Math.max(0, p - 0.3), burst.color);
+                    g.addColorStop(Math.min(1, p + 0.3), 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+                    targetCtx.fillStyle = g; targetCtx.fill();
+                } else if (elapsed < 1750) { targetCtx.fillStyle = burst.color; targetCtx.fill(); } 
+                else { targetCtx.globalAlpha = 1 - (elapsed - 1750)/500; targetCtx.fillStyle = burst.color; targetCtx.fill(); }
+                targetCtx.restore();
+            }
+        });
+        targetCtx.beginPath(); targetCtx.arc(lookX * 1.5, lookY * 1.5, s2, 0, Math.PI * 2); targetCtx.fillStyle = 'black'; targetCtx.fill();
+        targetCtx.restore();
+    }
+
+    function renderLeaderboard() {
+        if (!gameActive) {
+            let tempScores = [...scores];
+            let fitsAt = -1;
+            for(let i=0; i<5; i++) {
+                if (!tempScores[i] || score > tempScores[i].score) { fitsAt = i; break; }
+            }
+            if (fitsAt !== -1 && score > 0) {
+                tempScores.splice(fitsAt, 0, { name: "__INPUT__", score: score });
+                tempScores = tempScores.slice(0, 5);
+            }
+            leaderboardList.innerHTML = tempScores.map((s, i) => {
+                const rankIcon = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : '';
+                const isEntry = s.name === "__INPUT__";
+                return `
+                <div class="leaderboard-item ${isEntry ? 'bg-blue-50 py-6 ring-2 ring-blue-400' : ''}">
+                    <div class="flex items-center gap-3 flex-1 mr-4">
+                        <span class="text-[10px] text-gray-300 w-3">${i+1}</span>
+                        ${isEntry ? `<input type="text" id="high-score-name" value="${lastPlayerName}" maxlength="12" class="name-input" placeholder="ENTER YOUR NAME" oninput="window.updateRestartButton()">` :
+                            `<span class="txt-lb-name tracking-tight text-gray-600 truncate max-w-[120px]">${s.name} ${rankIcon}</span>`}
+                    </div>
+                    <span class="txt-lb-score text-blue-500 font-black">${s.score}</span>
+                </div>`;
+            }).join('');
+            window.updateRestartButton();
+        } else {
+            leaderboardList.innerHTML = scores.length > 0 ? scores.map((s, i) => `
+                <div class="leaderboard-item">
+                    <div class="flex items-center gap-3">
+                        <span class="text-[10px] text-gray-300 w-3">${i+1}</span>
+                        <span class="txt-lb-name tracking-tight text-gray-600 truncate max-w-[120px]">${s.name} ${i<3?['🥇','🥈','🥉'][i]:''}</span>
+                    </div>
+                    <span class="txt-lb-score text-blue-500 font-black">${s.score}</span>
+                </div>
+            `).join('') : `<div class="py-6 text-gray-300 italic text-center txt-lb-name">No records yet...</div>`;
+        }
+    }
+
+    window.updateRestartButton = () => {
+        const inputField = document.getElementById('high-score-name');
+        restartBtn.innerText = (inputField && inputField.value.trim().length > 0) ? "Save & Play Again" : "Play Again";
+    };
+
+    async function endGame() {
+        gameActive = false;
+        finalScoreVal.innerText = score;
+        dashboardScore.style.visibility = 'hidden'; 
+        gameOverTitle.innerText = DEATH_MESSAGES[Math.floor(Math.random() * DEATH_MESSAGES.length)];
+        gameOverScreen.style.display = 'flex';
+        renderLeaderboard();
+    }
+
+    function handleRestart() {
+        const nameInput = document.getElementById('high-score-name');
+        if (nameInput && nameInput.value.trim().length > 0) {
+            const name = nameInput.value.trim();
+            lastPlayerName = name;
+            saveScore(name, score);
+        }
+        resetGame();
+    }
+
+    function resetGame() {
+        fetchLeaderboard();
+        score = 0; scoreVal.innerText = '0';
+        dashboardScore.style.visibility = 'visible'; 
+        hero.vx = 0; hero.vy = 0; hero.colorBursts = [];
+        rewards = []; enemies = []; floatingTexts = [];
+        gameOverScreen.style.display = 'none';
+        totalPauseTime = 0;
+        gameStartTime = getGameTime();
+        initTimers();
+        gameActive = true;
+    }
+
+    function resize() {
+        const container = document.getElementById('game-container');
+        const rect = container.getBoundingClientRect();
+        const dpr = window.devicePixelRatio || 1;
+        
+        // Use rect values directly to ensure canvas matches the dynamic container size
+        width = rect.width; 
+        height = rect.height;
+        
+        canvas.width = width * dpr;
+        canvas.height = height * dpr;
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.scale(dpr, dpr);
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        
+        unit = height * 0.005;
+        document.documentElement.style.setProperty('--u', `${unit}px`);
+        if (hero.x === 0) { hero.x = width / 2; hero.y = height * 0.7; }
+    }
+
+    function update(now) {
+        if (!isWindowVisible) return;
+        if (!gameActive) {
+            const bobSpeed = 0.003;
+            const bobPhase = now * bobSpeed;
+            const bobAmt = unit * 4; 
+            const baseY = height * 0.15;
+            hero.x = width / 2;
+            hero.y = baseY + Math.sin(bobPhase) * bobAmt;
+            const lookAmt = Math.cos(bobPhase) * (unit * 2.5);
+            hero.eyeLookX += (0 - hero.eyeLookX) * 0.1;
+            hero.eyeLookY += (lookAmt - hero.eyeLookY) * 0.1;
+            return;
+        }
+        Object.keys(spawnTimers.rewards).forEach(emoji => {
+            if (now >= spawnTimers.rewards[emoji] && rewards.length < 10) { 
+                spawnReward(emoji); scheduleReward(emoji, now); 
+            }
+        });
+        Object.keys(spawnTimers.enemies).forEach(index => {
+            if (now >= spawnTimers.enemies[index]) { spawnEnemy(index); scheduleEnemy(index, now); }
+        });
+        if (input.active) {
+            const dx = input.currX - input.startX, dy = input.currY - input.startY, dist = Math.sqrt(dx * dx + dy * dy);
+            const p = Math.min(dist, unit * 8) / (unit * 8), a = Math.atan2(dy, dx);
+            hero.vx = Math.cos(a) * p * hero.baseSpeed; hero.vy = Math.sin(a) * p * hero.baseSpeed;
+            hero.eyeLookX += (Math.cos(a) * 2.4 * unit * p - hero.eyeLookX) * 0.1;
+            hero.eyeLookY += (Math.sin(a) * 2.4 * unit * p - hero.eyeLookY) * 0.1;
+        } else {
+            hero.vx *= 0.9; hero.vy *= 0.9;
+            hero.eyeLookX *= 0.1; hero.eyeLookY *= 0.1;
+        }
+        hero.x = Math.max(8 * unit, Math.min(width - 8 * unit, hero.x + hero.vx));
+        hero.y = Math.max(8 * unit, Math.min(height - 8 * unit, hero.y + hero.vy));
+        floatingTexts.forEach((ft, i) => { ft.y -= 0.6 * unit; ft.alpha -= 0.02; if (ft.alpha <= 0) floatingTexts.splice(i, 1); });
+        
+        rewards.forEach((r, idx) => {
+            if (r.growProgress < 1) r.growProgress += 0.02;
+            const collisionSize = 8 * unit + r.size;
+            if (Math.sqrt((hero.x - r.x)**2 + (hero.y - r.y)**2) < collisionSize) {
+                score += r.pts; scoreVal.innerText = score;
+                hero.colorBursts.push({ color: REWARD_DATA[r.emoji].color, time: now });
+                floatingTexts.push({ x: r.x, y: r.y, text: `+${r.pts}`, color: REWARD_DATA[r.emoji].color, alpha: 1 });
+                rewards.splice(idx, 1);
+            }
+        });
+        enemies.forEach((e, idx) => {
+            e.x += e.vx; e.y += e.vy; e.distTraveled += e.speed;
+            if (e.distTraveled >= e.nextTurnAt) {
+                e.angle += (e.turnDeg * Math.PI / 180) * (Math.random() < 0.5 ? 1 : -1);
+                e.vx = Math.cos(e.angle) * e.speed; e.vy = Math.sin(e.angle) * e.speed;
+                e.distTraveled = 0; e.nextTurnAt = (Math.random() * (e.strideMax - e.strideMin) + e.strideMin) * unit;
+            }
+            if (Math.sqrt((hero.x - e.x)**2 + (hero.y - e.y)**2) < (6.4 * unit + e.size)) endGame();
+            if (e.x < -200 || e.x > width + 200 || e.y < -200 || e.y > height + 200) enemies.splice(idx, 1);
+        });
+    }
+
+    function draw(now) {
+        if (!gameActive) {
+            ctx.fillStyle = 'white'; ctx.fillRect(0, 0, width, height);
+        } else {
+            ctx.clearRect(0, 0, width, height);
+            rewards.forEach(r => {
+                ctx.save(); 
+                ctx.translate(r.x, r.y);
+                const pulse = Math.sin((now % 2000) / 2000 * Math.PI * 2);
+                const currentScale = r.growProgress * (1 + pulse * 0.15);
+                ctx.rotate(pulse * 0.15);
+                ctx.scale(currentScale, currentScale);
+                
+                const sprite = sprites[r.emoji];
+                const d = r.size * 2;
+                ctx.drawImage(sprite, -d/2, -d/2, d, d);
+                ctx.restore();
+            });
+            enemies.forEach(e => {
+                ctx.save(); 
+                ctx.translate(e.x, e.y);
+                if (e.orient === 'up') ctx.rotate(Math.atan2(e.vy, e.vx) + Math.PI / 2);
+                else if (e.orient === 'left' && e.vx > 0) ctx.scale(-1, 1);
+                
+                const sprite = sprites[e.emoji];
+                const d = e.size * 2;
+                ctx.drawImage(sprite, -d/2, -d/2, d, d);
+                ctx.restore();
+            });
+            floatingTexts.forEach(ft => {
+                ctx.save(); ctx.globalAlpha = ft.alpha; ctx.fillStyle = ft.color;
+                ctx.font = `bold ${4.5 * unit}px sans-serif`; ctx.textAlign = 'center';
+                ctx.fillText(ft.text, ft.x, ft.y); ctx.restore();
+            });
+        }
+        drawHero(ctx, hero.x, hero.y, unit, now, hero.eyeLookX, hero.eyeLookY, hero.colorBursts);
+    }
+
+    function gameLoop() { 
+        const now = getGameTime();
+        update(now); draw(now); requestAnimationFrame(gameLoop); 
+    }
+
+    function handleStart(e) {
+        if (!gameActive) return;
+        const touch = e.touches ? e.touches[0] : e, rect = canvas.getBoundingClientRect();
+        input.active = true; input.startX = (touch.clientX - rect.left); input.startY = (touch.clientY - rect.top);
+        input.currX = input.startX; input.currY = input.startY;
+        joystickEl.style.display = 'block'; joystickEl.style.left = `${input.startX - (unit * 8)}px`; joystickEl.style.top = `${input.startY - (unit * 8)}px`;
+    }
+    
+    function handleMove(e) {
+        if (!input.active) return;
+        const touch = e.touches ? e.touches[0] : e, rect = canvas.getBoundingClientRect();
+        input.currX = (touch.clientX - rect.left); input.currY = (touch.clientY - rect.top);
+        const dx = input.currX - input.startX, dy = input.currY - input.startY, dist = Math.sqrt(dx * dx + dy * dy);
+        const clamped = Math.min(dist, unit * 8), angle = Math.atan2(dy, dx);
+        knobEl.style.transform = `translate(calc(-50% + ${Math.cos(angle) * clamped}px), calc(-50% + ${Math.sin(angle) * clamped}px))`;
+    }
+    
+    function handleEnd() { input.active = false; joystickEl.style.display = 'none'; }
+
+    document.addEventListener("visibilitychange", () => {
+        if (document.hidden) { isWindowVisible = false; lastPauseStarted = Date.now(); } 
+        else { if (lastPauseStarted > 0) totalPauseTime += (Date.now() - lastPauseStarted); isWindowVisible = true; }
+    });
+
+    window.addEventListener('resize', resize);
+    canvas.addEventListener('mousedown', handleStart);
+    window.addEventListener('mousemove', handleMove);
+    window.addEventListener('mouseup', handleEnd);
+    canvas.addEventListener('touchstart', (e) => { e.preventDefault(); handleStart(e); });
+    canvas.addEventListener('touchmove', (e) => { e.preventDefault(); handleMove(e); });
+    canvas.addEventListener('touchend', handleEnd);
+    restartBtn.addEventListener('click', handleRestart);
+
+    window.onload = () => {
+        preRenderSprites();
+        resize();
+        fetchLeaderboard();
+        gameStartTime = getGameTime();
+        initTimers();
+        gameLoop();
+    };
+</script>
+</body>
+</html>
