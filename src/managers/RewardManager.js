@@ -1,5 +1,5 @@
 import { REWARD_DATA, HERO_RADIUS } from '../core/constants.js';
-import { Reward } from '../entities/Reward.js';
+import { Reward } from '../entities/Reward.js?v=6';
 
 export class RewardManager {
     constructor() {
@@ -68,7 +68,7 @@ export class RewardManager {
         
         for (let i = this.rewards.length - 1; i >= 0; i--) {
             const reward = this.rewards[i];
-            reward.update();
+            reward.update(now);
 
             if (reward.checkCollision(hero.x, hero.y, heroCollisionRadius)) {
                 // Reward collected
@@ -115,15 +115,15 @@ export class RewardManager {
     draw(ctx, sprites, unit, now, opacity = 1) {
         // Draw rewards
         ctx.save();
-        ctx.globalAlpha = opacity;
-        this.rewards.forEach(reward => reward.draw(ctx, sprites));
+        ctx.globalAlpha *= opacity;
+        this.rewards.forEach(reward => reward.draw(ctx, sprites, now));
         ctx.restore();
 
         // Draw floating texts
         this.floatingTexts.forEach(t => {
             const progress = (now - t.time) / 1000;
             ctx.save();
-            ctx.globalAlpha = (1 - progress) * opacity;
+            ctx.globalAlpha *= (1 - progress) * opacity;
             ctx.fillStyle = t.color;
             ctx.font = `bold ${unit * (4 + progress * 4)}px sans-serif`;
             ctx.textAlign = 'center';

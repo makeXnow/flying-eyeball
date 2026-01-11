@@ -1,9 +1,9 @@
 import { HERO_COLLISION_RADIUS } from './constants.js';
 import { Hero } from '../entities/Hero.js';
 import { EnemyManager } from '../managers/EnemyManager.js';
-import { RewardManager } from '../managers/RewardManager.js';
+import { RewardManager } from '../managers/RewardManager.js?v=6';
 import { InputManager } from '../managers/InputManager.js';
-import { Renderer } from '../rendering/Renderer.js';
+import { Renderer } from '../rendering/Renderer.js?v=3';
 import { UIManager } from '../ui/UIManager.js';
 
 export class Game {
@@ -213,7 +213,9 @@ export class Game {
 
         let entityOpacity = 1;
         if (this.isGameOverAnimating) {
-            entityOpacity = 1 - Math.min(1, (now - this.gameOverStartTime) / 800);
+            // Fade out over 500ms (0.5 seconds)
+            const fadeElapsed = now - this.gameOverStartTime;
+            entityOpacity = Math.max(0, 1 - (fadeElapsed / 500));
         } else if (this.isStartingAnimating || !this.gameActive) {
             entityOpacity = 0;
         }

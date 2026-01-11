@@ -66,11 +66,18 @@ export class Renderer {
         
         const sprites = this.spriteCache.getAllSprites();
         
-        // Draw rewards and floating texts with specified opacity
-        rewardManager.draw(this.ctx, sprites, this.unit, now, opacity);
+        // Save current state for faded entities
+        this.ctx.save();
+        this.ctx.globalAlpha = opacity;
         
-        // Draw enemies with specified opacity
-        enemyManager.draw(this.ctx, sprites, this.unit, opacity);
+        // Draw rewards and floating texts
+        // We pass 1.0 to the managers because we've already set the globalAlpha here
+        rewardManager.draw(this.ctx, sprites, this.unit, now, 1.0);
+        
+        // Draw enemies
+        enemyManager.draw(this.ctx, sprites, this.unit, 1.0);
+        
+        this.ctx.restore();
         
         // Draw hero (always fully visible)
         this.ctx.globalAlpha = 1.0;

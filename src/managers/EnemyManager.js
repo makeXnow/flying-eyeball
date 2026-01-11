@@ -188,7 +188,7 @@ export class EnemyManager {
 
     draw(ctx, sprites, unit, opacity = 1) {
         ctx.save();
-        ctx.globalAlpha = opacity;
+        ctx.globalAlpha *= opacity;
         // Draw active enemies
         this.enemies.forEach(enemy => enemy.draw(ctx, sprites, unit));
         ctx.restore();
