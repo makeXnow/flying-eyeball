@@ -1,4 +1,4 @@
-import { Game } from './core/Game.js?v=6';
+import { Game } from './core/Game.js?v=9';
 
 let gameStarted = false;
 let gameInstance = null;

@@ -4,6 +4,7 @@ export class AudioManager {
         this.intro = new Audio('Sounds/intro.mp3');
         this.song = new Audio('Sounds/song.mp3');
         this.success = new Audio('Sounds/success.wav');
+        this.fail = new Audio('Sounds/fail.wav');
         this.song.loop = true;
         
         this.currentSource = null;
@@ -13,25 +14,37 @@ export class AudioManager {
         this.introLoaded = false;
         this.songLoaded = false;
         this.introFinishedPlaying = false;
-        this.waitingForGesture = false;
+        this.userHasInteracted = false; // Track if user has EVER interacted
         
         // Set up loading listeners
+        const logLoad = (name) => console.log(`Audio loaded: ${name}`);
         this.intro.addEventListener('canplaythrough', () => {
             this.introLoaded = true;
+            logLoad('intro');
             this.tryPlayIntro();
         }, { once: true });
         
         this.song.addEventListener('canplaythrough', () => {
             this.songLoaded = true;
+            logLoad('song');
             // If intro already finished, start song now
             if (this.introFinishedPlaying) {
                 this.playSong();
             }
         }, { once: true });
+
+        this.success.addEventListener('canplaythrough', () => logLoad('success'), { once: true });
+        this.fail.addEventListener('canplaythrough', () => logLoad('fail'), { once: true });
         
-        // Set up intro end detection (0.5s before actual end)
+        // Set up intro end detection
+        this.intro.addEventListener('ended', () => {
+            console.log("Intro ended naturally");
+            this.onIntroFinished();
+        });
+
         this.intro.addEventListener('timeupdate', () => {
             if (this.intro.duration > 0 && this.intro.currentTime >= this.intro.duration - 0.5) {
+                console.log("Intro finishing (0.5s remaining)");
                 this.onIntroFinished();
             }
         });
@@ -40,33 +53,56 @@ export class AudioManager {
         this.intro.preload = 'auto';
         this.song.preload = 'auto';
         this.success.preload = 'auto';
+        this.fail.preload = 'auto';
         this.intro.load();
         this.song.load();
         this.success.load();
+        this.fail.load();
     }
 
     tryPlayIntro() {
-        if (!this.introLoaded || this.isMuted) return;
+        // We no longer attempt autoplay to avoid "ghost" audio issues
+        if (this.isMuted || this.introFinishedPlaying || !this.userHasInteracted) return;
+        this.actuallyPlayIntro();
+    }
+
+    actuallyPlayIntro() {
+        if (this.isMuted) return;
         
         this.currentSource = this.intro;
-        this.intro.currentTime = 0;
+        this.intro.playbackRate = 1.0; 
         
-        const playPromise = this.intro.play();
-        if (playPromise) {
-            playPromise.catch(err => {
-                // Autoplay blocked - wait for user gesture
-                console.log("Autoplay blocked, waiting for user gesture");
-                this.waitingForGesture = true;
-            });
+        // Only reset to 0 if not already playing to avoid "skipping" sound
+        if (this.intro.paused) {
+            this.intro.currentTime = 0;
         }
+        
+        this.intro.play().catch(err => console.warn("Intro play failed:", err));
     }
 
     // Called when user interacts with the page
     onUserGesture() {
-        if (this.waitingForGesture && this.introLoaded && !this.isMuted) {
-            this.waitingForGesture = false;
-            this.intro.play().catch(err => console.warn("Audio play failed:", err));
-        }
+        if (this.userHasInteracted) return;
+        this.userHasInteracted = true;
+
+        console.log("Audio sequence started by user gesture");
+        
+        // Prime all sounds to unlock them for the browser
+        const sounds = [this.intro, this.song, this.success, this.fail];
+        sounds.forEach(sound => {
+            const playPromise = sound.play();
+            if (playPromise !== undefined) {
+                playPromise.then(() => {
+                    // Immediately pause and reset everything EXCEPT the intro
+                    if (sound !== this.intro || this.introFinishedPlaying) {
+                        sound.pause();
+                        sound.currentTime = 0;
+                    }
+                }).catch(err => {
+                    console.log(`Initial priming for ${sound.src} failed:`, err);
+                });
+            }
+        });
     }
 
     onIntroFinished() {
@@ -86,6 +122,7 @@ export class AudioManager {
         if (this.isMuted) return;
         
         this.currentSource = this.song;
+        this.song.playbackRate = 1.0; // Reset to normal speed
         this.song.currentTime = 0;
         this.song.play().catch(err => console.warn("Song play failed:", err));
     }
@@ -97,9 +134,7 @@ export class AudioManager {
         this.song.currentTime = 0;
         
         if (this.introLoaded && !this.isMuted) {
-            this.currentSource = this.intro;
-            this.intro.currentTime = 0;
-            this.intro.play().catch(err => console.warn("Intro play failed:", err));
+            this.actuallyPlayIntro();
         }
     }
 
@@ -107,6 +142,31 @@ export class AudioManager {
         if (this.isMuted) return;
         this.success.currentTime = 0;
         this.success.play().catch(err => console.warn("Success sound failed:", err));
+    }
+
+    playFail() {
+        if (this.isMuted) return;
+        this.stopAll(); // Stop music when failing
+        this.fail.currentTime = 0;
+        this.fail.play().catch(err => console.warn("Fail sound failed:", err));
+
+        // Play the main song at half speed for the Game Over screen
+        this.currentSource = this.song;
+        this.song.playbackRate = 0.5;
+        if ('preservesPitch' in this.song) {
+            this.song.preservesPitch = false; // Makes it sound deeper/warped
+        } else if ('mozPreservesPitch' in this.song) {
+            this.song.mozPreservesPitch = false;
+        } else if ('webkitPreservesPitch' in this.song) {
+            this.song.webkitPreservesPitch = false;
+        }
+        
+        // Small delay to ensure stopAll() completion and clean playback start
+        setTimeout(() => {
+            if (!this.isMuted && this.currentSource === this.song) {
+                this.song.play().catch(err => console.warn("Game over song failed:", err));
+            }
+        }, 100);
     }
 
     toggleMute() {
@@ -126,7 +186,21 @@ export class AudioManager {
     stopAll() {
         this.intro.pause();
         this.song.pause();
+        this.fail.pause();
         this.intro.currentTime = 0;
         this.song.currentTime = 0;
+        this.fail.currentTime = 0;
+    }
+
+    pause() {
+        if (this.currentSource && !this.currentSource.paused) {
+            this.currentSource.pause();
+        }
+    }
+
+    resume() {
+        if (this.currentSource && this.currentSource.paused && !this.isMuted) {
+            this.currentSource.play().catch(err => console.warn("Resume failed:", err));
+        }
     }
 }

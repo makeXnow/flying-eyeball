@@ -1,9 +1,9 @@
 import { HERO_COLLISION_RADIUS } from './constants.js';
 import { Hero } from '../entities/Hero.js';
 import { EnemyManager } from '../managers/EnemyManager.js';
-import { RewardManager } from '../managers/RewardManager.js?v=6';
+import { RewardManager } from '../managers/RewardManager.js?v=7';
 import { InputManager } from '../managers/InputManager.js';
-import { AudioManager } from '../managers/AudioManager.js';
+import { AudioManager } from '../managers/AudioManager.js?v=5';
 import { Renderer } from '../rendering/Renderer.js?v=3';
 import { UIManager } from '../ui/UIManager.js';
 
@@ -59,9 +59,9 @@ export class Game {
         // Initial resize to set dimensions
         this.handleResize();
 
-        // Create hero at initial position (at the center)
+        // Create hero at initial position (at the top)
         const { width, height } = this.renderer.getDimensions();
-        this.hero = new Hero(width / 2, height / 2);
+        this.hero = new Hero(width / 2, height * 0.18);
 
         // Fetch fresh leaderboard
         this.uiManager.fetchLeaderboard();
@@ -108,6 +108,7 @@ export class Game {
             if (this.isWindowVisible) {
                 this.isWindowVisible = false;
                 this.lastPauseStarted = performance.now();
+                this.audioManager.pause();
             }
         } else {
             if (!this.isWindowVisible) {
@@ -116,6 +117,7 @@ export class Game {
                     this.lastPauseStarted = 0;
                 }
                 this.isWindowVisible = true;
+                this.audioManager.resume();
                 // Important: Reset lastFrameTime to now to avoid a huge DT jump
                 this.lastFrameTime = performance.now();
             }
@@ -136,9 +138,9 @@ export class Game {
                     this.hero.y = dims.height / 2;
                 }
             } else {
-                // Bobbing at center
+                // Bobbing at top
                 this.hero.x = dims.width / 2;
-                this.hero.y = dims.height / 2;
+                this.hero.y = dims.height * 0.18;
             }
         }
     }
@@ -151,11 +153,11 @@ export class Game {
 
         if (this.isGameOverAnimating) {
             const progress = Math.min(1, (now - this.gameOverStartTime) / 800);
-            const targetY = height / 2;
+            const topY = height * 0.18;
             
-            // Interpolate to center
+            // Interpolate to top
             const currentBaseX = width / 2;
-            const currentBaseY = this.deathHeroY + (targetY - this.deathHeroY) * progress;
+            const currentBaseY = this.deathHeroY + (topY - this.deathHeroY) * progress;
             
             this.hero.idleBob(now, currentBaseX, currentBaseY, unit);
 
@@ -172,10 +174,11 @@ export class Game {
 
         if (this.isStartingAnimating) {
             const progress = Math.min(1, (now - this.startingStartTime) / 800);
+            const topY = height * 0.18;
             const centerY = height / 2;
             
             const currentBaseX = width / 2;
-            const currentBaseY = centerY; // Stay at center
+            const currentBaseY = topY + (centerY - topY) * progress;
             
             this.hero.idleBob(now, currentBaseX, currentBaseY, unit);
             
@@ -187,8 +190,10 @@ export class Game {
                 this.rewardManager.reset(now);
                 this.enemyManager.reset(now, this.gameStartTime);
                 
-                // Clear any velocity from idle bobbing
+                // Snap to exact center and clear any velocity from idle bobbing
                 if (this.hero) {
+                    this.hero.x = width / 2;
+                    this.hero.y = height / 2;
                     this.hero.vx = 0;
                     this.hero.vy = 0;
                 }
@@ -197,8 +202,8 @@ export class Game {
         }
 
         if (!this.gameActive) {
-            // Just do idle bob animation at the center when game is not active
-            this.hero.idleBob(now, width / 2, height / 2, unit);
+            // Just do idle bob animation at the top when game is not active
+            this.hero.idleBob(now, width / 2, height * 0.18, unit);
             return;
         }
 
@@ -268,6 +273,7 @@ export class Game {
         this.deathHeroX = this.hero.x;
         this.deathHeroY = this.hero.y;
         this.inputManager.setGameActive(false);
+        this.audioManager.playFail();
     }
 
     resetGame() {
