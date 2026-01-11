@@ -5,12 +5,12 @@
 window.TEST_ENEMY = null; 
 
 // Global Spawn Rules:
-window.start_spawn = 1;      // Initial seconds between spawns
+window.start_spawn = 1.5;      // Initial seconds between spawns
 window.max_spawn = .3;        // Final seconds between spawns
 window.max_spawn_time = 120;  // Seconds it takes to reach max_spawn
 
 window.max_total_start = 10;  // Initial max enemies on screen
-window.max_total = 20;        // Final max enemies on screen
+window.max_total = 15;        // Final max enemies on screen
 window.max_total_time = 120;  // Seconds it takes to reach max_total
 
 // Enemy Rules:
@@ -24,7 +24,7 @@ window.ENEMY_CONFIG = [
     { emoji: '🐝', firstPts: 0,  weight: 20, size: 3.6, speed: 0.1, max: 6 },
     { emoji: '🪲', firstPts: 40,  weight: 20, size: 5, speed: 0.0025, max: 4 },
     { emoji: '🐜', firstPts: 75,  weight: 20, size: 1.8, speed: 0.166, groupMin: 3, groupMax: 7, groupGap: 20, max: 4 },
-    { emoji: '🕷️', firstPts: 150, weight: 30, size: 4.8, speed: 0, max: 3 },
+    { emoji: '🕷️', firstPts: 150, weight: 20, size: 4.8, speed: 0, max: 3 },
     { emoji: '🪳', firstPts: 200, weight: 20, size: 6,   speed: 0.5, max: 4 }
 ];
 
