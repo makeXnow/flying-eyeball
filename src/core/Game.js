@@ -3,6 +3,7 @@ import { Hero } from '../entities/Hero.js';
 import { EnemyManager } from '../managers/EnemyManager.js';
 import { RewardManager } from '../managers/RewardManager.js?v=6';
 import { InputManager } from '../managers/InputManager.js';
+import { AudioManager } from '../managers/AudioManager.js';
 import { Renderer } from '../rendering/Renderer.js?v=3';
 import { UIManager } from '../ui/UIManager.js';
 
@@ -11,9 +12,16 @@ export class Game {
         // Managers (initialized in init once DOM is ready)
         this.renderer = null;
         this.inputManager = null;
+        this.audioManager = new AudioManager();
         this.enemyManager = new EnemyManager();
         this.rewardManager = new RewardManager();
         this.uiManager = new UIManager();
+
+        // Initialize UI listeners early to handle mute button on splash screen
+        this.uiManager.init(
+            () => this.resetGame(),
+            () => this.audioManager.toggleMute()
+        );
 
         this.hero = null;
         this.gameActive = false;
@@ -28,6 +36,7 @@ export class Game {
         this.totalPauseTime = 0;
         this.lastPauseStarted = 0;
         this.isWindowVisible = true;
+        this.lastFrameTime = performance.now();
 
         this.gameLoop = this.gameLoop.bind(this);
         this.handleVisibilityChange = this.handleVisibilityChange.bind(this);
@@ -54,8 +63,7 @@ export class Game {
         const { width, height } = this.renderer.getDimensions();
         this.hero = new Hero(width / 2, height * 0.18);
 
-        // Initialize UI
-        this.uiManager.init(() => this.resetGame());
+        // Fetch fresh leaderboard
         this.uiManager.fetchLeaderboard();
 
         // Set up event listeners
@@ -64,11 +72,15 @@ export class Game {
 
         // Initialize game time
         this.gameStartTime = this.getGameTime();
+        this.lastFrameTime = performance.now();
 
         // Initialize timers
         const now = this.getGameTime();
         this.rewardManager.reset(now);
         this.enemyManager.reset(now, this.gameStartTime);
+
+        // Start music
+        this.audioManager.playIntro();
 
         // Set input manager state
         this.inputManager.setUnit(this.renderer.getDimensions().unit);
@@ -90,19 +102,26 @@ export class Game {
 
     getGameTime() {
         return this.isWindowVisible 
-            ? Date.now() - this.totalPauseTime 
+            ? performance.now() - this.totalPauseTime 
             : this.lastPauseStarted - this.totalPauseTime;
     }
 
     handleVisibilityChange() {
         if (document.hidden) {
-            this.isWindowVisible = false;
-            this.lastPauseStarted = Date.now();
-        } else {
-            if (this.lastPauseStarted > 0) {
-                this.totalPauseTime += (Date.now() - this.lastPauseStarted);
+            if (this.isWindowVisible) {
+                this.isWindowVisible = false;
+                this.lastPauseStarted = performance.now();
             }
-            this.isWindowVisible = true;
+        } else {
+            if (!this.isWindowVisible) {
+                if (this.lastPauseStarted > 0) {
+                    this.totalPauseTime += (performance.now() - this.lastPauseStarted);
+                    this.lastPauseStarted = 0;
+                }
+                this.isWindowVisible = true;
+                // Important: Reset lastFrameTime to now to avoid a huge DT jump
+                this.lastFrameTime = performance.now();
+            }
         }
     }
 
@@ -127,7 +146,7 @@ export class Game {
         }
     }
 
-    update(now) {
+    update(now, dt) {
         const { width, height, unit } = this.renderer.getDimensions();
         if (width === 0 || height === 0) return;
 
@@ -148,8 +167,8 @@ export class Game {
                 this.uiManager.showGameOver(this.score);
             } else {
                 // Update entities to fall during animation
-                this.enemyManager.updateGameOver(unit);
-                this.rewardManager.updateGameOver(unit);
+                this.enemyManager.updateGameOver(unit, dt);
+                this.rewardManager.updateGameOver(unit, dt);
             }
             return;
         }
@@ -182,12 +201,14 @@ export class Game {
         }
 
         // Update hero based on input
-        this.hero.update(this.inputManager.getState(), width, height, unit);
+        const motionDt = dt * (window.global_speed || 1.0);
+        this.hero.update(this.inputManager.getState(), width, height, unit, motionDt);
 
         // Update rewards and handle collection
         this.rewardManager.update(now, width, height, unit, this.hero, (pts) => {
             this.score += pts;
             this.uiManager.updateScore(this.score);
+            this.audioManager.playSuccess();
         });
 
         // Update enemies
@@ -200,7 +221,8 @@ export class Game {
             this.rewardManager.getRewards(),
             this.hero,
             () => this.gameOver(now),
-            this.score
+            this.score,
+            motionDt
         );
     }
 
@@ -223,9 +245,15 @@ export class Game {
         this.renderer.render(now, this.hero, this.rewardManager, this.enemyManager, entityOpacity);
     }
 
-    gameLoop() {
+    gameLoop(timestamp) {
         const now = this.getGameTime();
-        this.update(now);
+        // Use the timestamp provided by requestAnimationFrame for physics DT
+        // Fallback to performance.now() if timestamp isn't provided (unlikely)
+        const frameTime = timestamp || performance.now();
+        const dt = Math.min(3, (frameTime - this.lastFrameTime) / 16.666);
+        this.lastFrameTime = frameTime;
+
+        this.update(now, dt);
         this.draw(now);
         requestAnimationFrame(this.gameLoop);
     }
@@ -256,6 +284,9 @@ export class Game {
         const now = this.getGameTime();
         this.enemyManager.reset(now, now);
         this.rewardManager.reset(now);
+
+        // Restart music
+        this.audioManager.playIntro(true);
 
         // Reset UI
         this.uiManager.resetUI();

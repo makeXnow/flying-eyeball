@@ -36,12 +36,12 @@ export class Bee extends BaseEnemy {
         this.bobAmplitude = (15 * unit) * (0.25 + Math.random() * 0.25);
     }
 
-    update(now, width, height, unit) {
+    update(now, width, height, unit, dt = 1) {
         // Move horizontally
         const dir = this.targetX > this.startX ? 1 : -1;
         const vx = dir * this.speed;
-        this.x += vx;
-        this.traveled += this.speed;
+        this.x += vx * dt;
+        this.traveled += this.speed * dt;
         
         // Calculate progress (0 to 1)
         const progress = Math.min(1, this.traveled / this.totalDist);
@@ -51,7 +51,7 @@ export class Bee extends BaseEnemy {
         
         // Add vertical sine wave bobbing
         const oldPhase = this.bobPhase;
-        this.bobPhase += this.bobSpeed;
+        this.bobPhase += this.bobSpeed * dt;
         
         // After each peak or valley (when we cross the center line), pick a new random height
         if (Math.floor(oldPhase / Math.PI) !== Math.floor(this.bobPhase / Math.PI)) {

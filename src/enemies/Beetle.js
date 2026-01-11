@@ -68,12 +68,12 @@ export class Beetle extends BaseEnemy {
         this.updatePos(unit);
     }
 
-    updatePos(unit) {
+    updatePos(unit, dt = 1) {
         const prevX = this.x;
         const prevY = this.y;
         
         // Add wave motion
-        this.wavePhase += 0.0375;
+        this.wavePhase += 0.0375 * dt;
         const waveAmplitude = unit * 1;
         const dynamicRadius = this.radius + Math.sin(this.wavePhase) * waveAmplitude;
         
@@ -83,9 +83,9 @@ export class Beetle extends BaseEnemy {
         this.vy = this.y - prevY;
     }
 
-    update(now, width, height, unit) {
-        this.angularPos += this.speed * (this.reverse ? -1 : 1);
-        this.updatePos(unit);
+    update(now, width, height, unit, dt = 1) {
+        this.angularPos += this.speed * (this.reverse ? -1 : 1) * dt;
+        this.updatePos(unit, dt);
         
         // Check if finished arc
         if (this.reverse) {

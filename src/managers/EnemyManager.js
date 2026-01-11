@@ -133,7 +133,7 @@ export class EnemyManager {
         if (newEnemy) this.enemies.push(newEnemy);
     }
 
-    update(now, width, height, unit, gameStartTime, rewards, hero, onGameOver, currentScore) {
+    update(now, width, height, unit, gameStartTime, rewards, hero, onGameOver, currentScore, dt = 1) {
         if (!unit || unit <= 0) return;
 
         const elapsed = now - gameStartTime;
@@ -165,7 +165,7 @@ export class EnemyManager {
         // Update active enemies
         for (let i = this.enemies.length - 1; i >= 0; i--) {
             const enemy = this.enemies[i];
-            enemy.update(now, width, height, unit, rewards);
+            enemy.update(now, width, height, unit, dt);
 
             // Check collision with hero
             if (enemy.checkCollision(hero.x, hero.y, HERO_COLLISION_RADIUS * unit, unit)) {
@@ -180,9 +180,9 @@ export class EnemyManager {
         }
     }
 
-    updateGameOver(unit) {
+    updateGameOver(unit, dt = 1) {
         this.enemies.forEach(enemy => {
-            enemy.y += 2 * unit;
+            enemy.y += 2 * unit * dt;
         });
     }
 

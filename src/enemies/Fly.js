@@ -21,28 +21,29 @@ export class Fly extends BaseEnemy {
         this.rotationSpeed = 0.03;
     }
 
-    update(now, width, height, unit) {
+    update(now, width, height, unit, dt = 1) {
         if (this.isRotating) {
             let diff = this.targetAngle - this.angle;
             // Normalize angle difference
             while (diff > Math.PI) diff -= Math.PI * 2;
             while (diff < -Math.PI) diff += Math.PI * 2;
             
-            if (Math.abs(diff) < this.rotationSpeed) {
+            const step = this.rotationSpeed * dt;
+            if (Math.abs(diff) < step) {
                 this.angle = this.targetAngle;
                 this.isRotating = false;
                 this.distTraveled = 0;
                 this.nextTurnAt = (Math.random() * 30 + 20) * unit;
             } else {
-                this.angle += Math.sign(diff) * this.rotationSpeed;
+                this.angle += Math.sign(diff) * step;
             }
             this.vx = Math.cos(this.angle) * this.speed;
             this.vy = Math.sin(this.angle) * this.speed;
-            this.x += this.vx;
-            this.y += this.vy;
+            this.x += this.vx * dt;
+            this.y += this.vy * dt;
         } else {
-            super.update(now, width, height, unit);
-            this.distTraveled += this.speed;
+            super.update(now, width, height, unit, dt);
+            this.distTraveled += this.speed * dt;
             if (this.distTraveled >= this.nextTurnAt) {
                 this.isRotating = true;
                 this.targetAngle = this.angle + ((Math.random() * 85 - 45) * Math.PI / 180);

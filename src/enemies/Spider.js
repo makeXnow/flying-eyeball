@@ -34,9 +34,9 @@ export class Spider extends BaseEnemy {
         this.turnDir = Math.random() < 0.5 ? 1 : -1;
     }
 
-    update(now, width, height, unit) {
+    update(now, width, height, unit, dt = 1) {
         if (this.state === 'entering') {
-            this.progress += 1 / 60; // 1 second at 60fps
+            this.progress += dt / 60; // 1 second at 60fps
             const p = Math.min(1, this.progress);
             // Ease out quadratic for a smooth stop at 5%
             const ease = 1 - (1 - p) * (1 - p);
@@ -52,7 +52,7 @@ export class Spider extends BaseEnemy {
                 this.progress = 0;
             }
         } else if (this.state === 'descending') {
-            this.progress += 1 / this.mainDescendDuration;
+            this.progress += dt / this.mainDescendDuration;
             const p = Math.min(1, this.progress);
             // Ease out cubic
             const ease = 1 - Math.pow(1 - p, 3);
@@ -75,7 +75,7 @@ export class Spider extends BaseEnemy {
                 this.currentRotation = 0;
             }
         } else if (this.state === 'ascending') {
-            this.progress += 1 / this.mainAscendDuration;
+            this.progress += dt / this.mainAscendDuration;
             const p = Math.min(1, this.progress);
             // Ease in cubic
             const ease = Math.pow(p, 3);

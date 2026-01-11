@@ -32,7 +32,7 @@ export class Hero {
         this.lastFlapUpdate = 0;
     }
 
-    update(input, width, height, unit) {
+    update(input, width, height, unit, dt = 1) {
         const inputDx = input.currX - input.startX;
         const inputDy = input.currY - input.startY;
 
@@ -46,14 +46,15 @@ export class Hero {
             this.vy = Math.sin(angle) * power * this.baseSpeed;
         } else {
             // Decelerate when not touching
-            this.vx *= 0.9;
-            this.vy *= 0.9;
+            const friction = Math.pow(0.9, dt);
+            this.vx *= friction;
+            this.vy *= friction;
         }
 
         // Apply velocity with bounds checking
         const margin = HERO_RADIUS * unit;
-        this.x = Math.max(margin, Math.min(width - margin, this.x + this.vx));
-        this.y = Math.max(margin, Math.min(height - margin, this.y + this.vy));
+        this.x = Math.max(margin, Math.min(width - margin, this.x + this.vx * dt));
+        this.y = Math.max(margin, Math.min(height - margin, this.y + this.vy * dt));
 
         // Update eye look direction
         const lookAngle = Math.atan2(inputDy, inputDx);
@@ -62,8 +63,9 @@ export class Hero {
             : 0;
         
         // Smooth interpolation for eye movement
-        this.eyeLookX += (Math.cos(lookAngle) * lookDist - this.eyeLookX) * 0.1;
-        this.eyeLookY += (Math.sin(lookAngle) * lookDist - this.eyeLookY) * 0.1;
+        const smoothing = 1 - Math.pow(0.9, dt);
+        this.eyeLookX += (Math.cos(lookAngle) * lookDist - this.eyeLookX) * smoothing;
+        this.eyeLookY += (Math.sin(lookAngle) * lookDist - this.eyeLookY) * smoothing;
     }
 
     addColorBurst(time, color) {
@@ -208,7 +210,11 @@ export class Hero {
             }
         });
 
-        // Clean up old bursts
-        this.colorBursts = this.colorBursts.filter(b => now - b.time < 2250);
+        // Clean up old bursts (in-place removal to avoid array recreation)
+        for (let i = this.colorBursts.length - 1; i >= 0; i--) {
+            if (now - this.colorBursts[i].time >= 2250) {
+                this.colorBursts.splice(i, 1);
+            }
+        }
     }
 }

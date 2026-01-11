@@ -14,6 +14,7 @@
     <meta name="theme-color" content="#3b82f6">
 
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
     <script src="gameConfig.js"></script>
     <style>
         :root {
@@ -51,7 +52,6 @@
             aspect-ratio: 9 / 16;
             background: white;
             box-shadow: 0 0 150px 40px rgba(0,0,0,0.8);
-            overflow: hidden;
             z-index: 10;
         }
         canvas {
@@ -59,6 +59,7 @@
             width: 100%;
             height: 100%;
             image-rendering: auto;
+            pointer-events: none;
         }
         #ui-layer {
             position: absolute;
@@ -113,6 +114,30 @@
         .txt-lb-header { font-size: calc(var(--u) * 4); }
         .txt-lb-name { font-size: calc(var(--u) * 3); }
         .txt-lb-score { font-size: calc(var(--u) * 3.5); }
+        
+        #mute-btn {
+            position: fixed;
+            bottom: calc(var(--u) * 4);
+            /* Position relative to the game container's left edge */
+            left: max(calc(var(--u) * 4), calc(50vw - (min(100dvw, calc(100dvh * 9 / 16)) / 2) + (var(--u) * 4)));
+            z-index: 10001;
+            cursor: pointer;
+            color: rgb(0, 0, 0);
+            opacity: 0.25;
+            pointer-events: auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.2s ease, opacity 0.2s ease;
+        }
+        #mute-btn:active {
+            transform: scale(0.9);
+        }
+        #mute-btn svg {
+            width: calc(var(--u) * 8);
+            height: calc(var(--u) * 8);
+            stroke-width: 3px;
+        }
         
         .name-input {
             background: #fff;
@@ -264,7 +289,7 @@
         }
     </style>
 </head>
-<body oncontextmenu="return false;">
+    <body oncontextmenu="return false;" style="touch-action: none; overflow: hidden;">
 
     <!-- Splash Screen - shown on initial load only -->
     <div id="splash-screen">
@@ -272,6 +297,10 @@
             <img src="art/splashscreen.png" alt="Flying Eyeball">
             <button id="start-btn" class="liquid-glass-btn">Start Game</button>
         </div>
+    </div>
+
+    <div id="mute-btn">
+        <i data-lucide="volume-2"></i>
     </div>
 
     <div id="game-container">
@@ -316,14 +345,14 @@
                 const unit = Math.max(0.1, height / 200);
                 document.documentElement.style.setProperty('--u', unit + 'px');
                 
-                // #region agent log
-                fetch('http://127.0.0.1:7250/ingest/e1b2c081-9a61-4efa-b325-ecd92825aca7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:fastUpdateUnit',message:'Unit updated',data:{unit,containerWidth:rect.width,containerHeight:rect.height,containerLeft:rect.left},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'B'})}).catch(()=>{});
-                // #endregion
-
                 if (splash && !splash.classList.contains('ready')) {
                     // Force a small delay to ensure CSS variables are applied
                     requestAnimationFrame(() => {
                         splash.classList.add('ready');
+                        // Initialize icons for splash screen
+                        if (window.lucide) {
+                            window.lucide.createIcons();
+                        }
                     });
                 }
             } else {

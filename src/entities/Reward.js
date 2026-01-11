@@ -78,7 +78,10 @@ export class Reward {
     }
 
     checkCollision(heroX, heroY, heroRadius) {
-        const dist = Math.sqrt((heroX - this.x) ** 2 + (heroY - this.y) ** 2);
-        return dist < (heroRadius + this.size);
+        const dx = heroX - this.x;
+        const dy = heroY - this.y;
+        const distSq = dx * dx + dy * dy;
+        const radiusSum = heroRadius + this.size;
+        return distSq < radiusSum * radiusSum;
     }
 }

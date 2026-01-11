@@ -88,8 +88,12 @@ export class RewardManager {
             }
         }
 
-        // Clean up old floating texts
-        this.floatingTexts = this.floatingTexts.filter(t => now - t.time <= 1000);
+        // Clean up old floating texts (in-place removal to avoid array recreation)
+        for (let i = this.floatingTexts.length - 1; i >= 0; i--) {
+            if (now - this.floatingTexts[i].time > 1000) {
+                this.floatingTexts.splice(i, 1);
+            }
+        }
     }
 
     // Allow enemies to eat rewards (used by Ants)
@@ -103,12 +107,12 @@ export class RewardManager {
         }
     }
 
-    updateGameOver(unit) {
+    updateGameOver(unit, dt = 1) {
         this.rewards.forEach(reward => {
-            reward.y += 2 * unit; // Fall down speed during game over
+            reward.y += 2 * unit * dt; // Fall down speed during game over
         });
         this.floatingTexts.forEach(t => {
-            t.y += 2 * unit; // Make floating texts fall too
+            t.y += 2 * unit * dt; // Make floating texts fall too
         });
     }
 

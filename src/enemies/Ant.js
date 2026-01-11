@@ -1,6 +1,8 @@
 import { BaseEnemy } from './BaseEnemy.js';
 import { ENEMY_CONFIG } from '../core/constants.js';
 
+const MAX_HISTORY = 500;
+
 export class Ant extends BaseEnemy {
     constructor(x, y, unit, leader = null, offset = 0) {
         const activeConfig = window.ENEMY_CONFIG || ENEMY_CONFIG;
@@ -9,9 +11,13 @@ export class Ant extends BaseEnemy {
         super({ emoji: '🐜', x, y, size: config.size, speed: antSpeed, orient: 'left' });
         this.leader = leader;
         this.offset = offset;
-        this.history = [];
         
         if (!leader) {
+            // Circular buffer for position history (avoids O(n) shift operations)
+            this.history = new Array(MAX_HISTORY);
+            this.historyHead = 0;
+            this.historyCount = 0;
+            
             this.angle = Math.random() * Math.PI * 2;
             this.vx = Math.cos(this.angle) * this.speed;
             this.vy = Math.sin(this.angle) * this.speed;
@@ -20,10 +26,18 @@ export class Ant extends BaseEnemy {
         }
     }
 
-    update(now, width, height, unit, rewards) {
+    // Get history entry from N positions ago (0 = most recent)
+    getHistoryAt(stepsBack) {
+        if (this.historyCount === 0) return null;
+        const clampedSteps = Math.min(stepsBack, this.historyCount - 1);
+        const idx = (this.historyHead - 1 - clampedSteps + MAX_HISTORY) % MAX_HISTORY;
+        return this.history[idx];
+    }
+
+    update(now, width, height, unit, rewards, dt = 1) {
         if (!this.leader) {
-            super.update(now, width, height, unit);
-            this.distTraveled += this.speed;
+            super.update(now, width, height, unit, dt);
+            this.distTraveled += this.speed * dt;
             if (this.distTraveled >= this.nextTurnAt) {
                 this.angle += (Math.random() * 160 - 80) * Math.PI / 180;
                 this.vx = Math.cos(this.angle) * this.speed;
@@ -31,11 +45,12 @@ export class Ant extends BaseEnemy {
                 this.distTraveled = 0;
                 this.nextTurnAt = (Math.random() * 30 + 10) * unit;
             }
-            this.history.push({ x: this.x, y: this.y, vx: this.vx, vy: this.vy });
-            if (this.history.length > 300) this.history.shift();
+            // Write to circular buffer (O(1) instead of O(n) shift)
+            this.history[this.historyHead] = { x: this.x, y: this.y, vx: this.vx, vy: this.vy };
+            this.historyHead = (this.historyHead + 1) % MAX_HISTORY;
+            this.historyCount = Math.min(this.historyCount + 1, MAX_HISTORY);
         } else {
-            const targetIdx = this.leader.history.length - 1 - this.offset;
-            const target = this.leader.history[Math.max(0, targetIdx)];
+            const target = this.leader.getHistoryAt(Math.floor(this.offset));
             if (target) { 
                 this.x = target.x; 
                 this.y = target.y; 
@@ -47,8 +62,11 @@ export class Ant extends BaseEnemy {
         if (rewards) {
             for (let i = rewards.length - 1; i >= 0; i--) {
                 const r = rewards[i];
-                const dist = Math.sqrt((this.x - r.x) ** 2 + (this.y - r.y) ** 2);
-                if (dist < (this.size * unit + r.size)) rewards.splice(i, 1);
+                const dx = this.x - r.x;
+                const dy = this.y - r.y;
+                const distSq = dx * dx + dy * dy;
+                const radiusSum = this.size * unit + r.size;
+                if (distSq < radiusSum * radiusSum) rewards.splice(i, 1);
             }
         }
     }
@@ -68,8 +86,8 @@ export class AntGroup {
         }
     }
 
-    update(now, width, height, unit, rewards) {
-        this.ants.forEach(ant => ant.update(now, width, height, unit, rewards));
+    update(now, width, height, unit, rewards, dt = 1) {
+        this.ants.forEach(ant => ant.update(now, width, height, unit, rewards, dt));
     }
 
     draw(ctx, sprites, unit) {

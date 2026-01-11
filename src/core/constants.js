@@ -8,6 +8,7 @@ export const SPRITE_RESOLUTION = 256;
 const getGlobal = (key, fallback) => window[key] || fallback;
 
 // Global Spawn Settings
+export const GLOBAL_SPEED = getGlobal('global_speed', 1.0);
 export const START_SPAWN = getGlobal('start_spawn', 2);
 export const MAX_SPAWN = getGlobal('max_spawn', 1);
 export const MAX_SPAWN_TIME = getGlobal('max_spawn_time', 90);

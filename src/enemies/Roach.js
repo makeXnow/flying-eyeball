@@ -20,9 +20,9 @@ export class Roach extends BaseEnemy {
         this.nextTurnAt = (Math.random() * 15 + 5) * unit;
     }
 
-    update(now, width, height, unit) {
-        super.update(now, width, height, unit);
-        this.distTraveled += this.speed;
+    update(now, width, height, unit, dt = 1) {
+        super.update(now, width, height, unit, dt);
+        this.distTraveled += this.speed * dt;
         
         if (this.distTraveled >= this.nextTurnAt) {
             this.angle += (Math.random() * 160 - 80) * Math.PI / 180;

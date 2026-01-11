@@ -15,9 +15,9 @@ export class BaseEnemy {
         this.canEatRewards = false;
     }
 
-    update(now, width, height, unit) {
-        this.x += this.vx;
-        this.y += this.vy;
+    update(now, width, height, unit, dt = 1) {
+        this.x += this.vx * dt;
+        this.y += this.vy * dt;
     }
 
     draw(ctx, sprites, unit) {
@@ -40,7 +40,10 @@ export class BaseEnemy {
     }
 
     checkCollision(heroX, heroY, heroRadius, unit) {
-        const dist = Math.sqrt((heroX - this.x) ** 2 + (heroY - this.y) ** 2);
-        return dist < (heroRadius + this.size * unit);
+        const dx = heroX - this.x;
+        const dy = heroY - this.y;
+        const distSq = dx * dx + dy * dy;
+        const radiusSum = heroRadius + this.size * unit;
+        return distSq < radiusSum * radiusSum;
     }
 }

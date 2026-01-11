@@ -16,17 +16,49 @@ export class UIManager {
         this.gameOverTitle = document.getElementById('game-over-title');
         this.restartBtn = document.getElementById('restart-btn');
         this.leaderboardList = document.getElementById('leaderboard-list');
+        this.muteBtn = document.getElementById('mute-btn');
         
         // Create leaderboard manager
         this.leaderboard = new Leaderboard(this.leaderboardList);
         
         // Restart callback
         this.onRestart = null;
+        this.onMuteToggle = null;
+
+        this.lastScore = -1;
+        this.lastTimerSeconds = -1;
     }
 
-    init(onRestart) {
+    init(onRestart, onMuteToggle) {
         this.onRestart = onRestart;
+        this.onMuteToggle = onMuteToggle;
         this.restartBtn.addEventListener('click', () => this.handleRestart());
+        
+        if (this.muteBtn) {
+            this.muteBtn.addEventListener('click', () => {
+                if (this.onMuteToggle) {
+                    const isMuted = this.onMuteToggle();
+                    this.updateMuteIcon(isMuted);
+                }
+            });
+        }
+
+        // Initialize Lucide icons
+        if (window.lucide) {
+            window.lucide.createIcons();
+        }
+
+        this.lastScore = -1;
+        this.lastTimerSeconds = -1;
+    }
+
+    updateMuteIcon(isMuted) {
+        if (!this.muteBtn) return;
+        const iconName = isMuted ? 'volume-x' : 'volume-2';
+        this.muteBtn.innerHTML = `<i data-lucide="${iconName}"></i>`;
+        if (window.lucide) {
+            window.lucide.createIcons();
+        }
     }
 
     async fetchLeaderboard() {
@@ -34,6 +66,8 @@ export class UIManager {
     }
 
     updateScore(score) {
+        if (this.lastScore === score) return;
+        this.lastScore = score;
         if (this.scoreVal) this.scoreVal.innerText = score;
     }
 
@@ -45,6 +79,9 @@ export class UIManager {
         if (!this.timerVal || !this.dashboardTimer) return;
         
         const totalSeconds = Math.floor(ms / 1000);
+        
+        if (this.lastTimerSeconds === totalSeconds) return;
+        this.lastTimerSeconds = totalSeconds;
         
         // Hide timer if it's 0, show it once it hits 1
         if (totalSeconds <= 0) {

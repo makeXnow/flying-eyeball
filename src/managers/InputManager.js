@@ -60,13 +60,14 @@ export class InputManager {
     handleStart(e) {
         if (!this.gameActive) return;
 
+        // Don't start joystick if we clicked on the mute button
+        if (e.target && (e.target.id === 'mute-btn' || e.target.closest('#mute-btn'))) {
+            return;
+        }
+
         const rect = this.canvas.getBoundingClientRect();
         const x = e.clientX - rect.left;
         const y = e.clientY - rect.top;
-
-        // #region agent log
-        fetch('http://127.0.0.1:7250/ingest/e1b2c081-9a61-4efa-b325-ecd92825aca7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'InputManager.js:handleStart',message:'Joystick start (FIXED COORDS)',data:{clientX:e.clientX,clientY:e.clientY,rectLeft:rect.left,rectTop:rect.top,localX:x,localY:y},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'A'})}).catch(()=>{});
-        // #endregion
 
         this.state.active = true;
         this.state.startX = x;
@@ -84,17 +85,10 @@ export class InputManager {
         this.state.currX = e.clientX - rect.left;
         this.state.currY = e.clientY - rect.top;
 
-        // #region agent log
-        fetch('http://127.0.0.1:7250/ingest/e1b2c081-9a61-4efa-b325-ecd92825aca7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'InputManager.js:handleMove',message:'Joystick move (FIXED COORDS)',data:{localCurrX:this.state.currX,localCurrY:this.state.currY},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'B'})}).catch(()=>{});
-        // #endregion
-
         this.updateKnobPosition();
     }
 
     handleEnd() {
-        // #region agent log
-        fetch('http://127.0.0.1:7250/ingest/e1b2c081-9a61-4efa-b325-ecd92825aca7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'InputManager.js:handleEnd',message:'Joystick end',data:{},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'A'})}).catch(()=>{});
-        // #endregion
         this.state.active = false;
         this.hideJoystick();
     }
@@ -104,10 +98,6 @@ export class InputManager {
         this.joystickEl.style.display = 'block';
         this.joystickEl.style.left = `${x - joystickSize}px`;
         this.joystickEl.style.top = `${y - joystickSize}px`;
-        
-        // #region agent log
-        fetch('http://127.0.0.1:7250/ingest/e1b2c081-9a61-4efa-b325-ecd92825aca7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'InputManager.js:showJoystick',message:'Setting joystick style',data:{left:this.joystickEl.style.left,top:this.joystickEl.style.top},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'A'})}).catch(()=>{});
-        // #endregion
     }
 
     hideJoystick() {

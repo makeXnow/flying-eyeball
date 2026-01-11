@@ -5,6 +5,7 @@
 window.TEST_ENEMY = null; 
 
 // Global Spawn Rules:
+window.global_speed = 1.0;     // Multiplier for all motion (hero and enemies)
 window.start_spawn = 1.5;      // Initial seconds between spawns
 window.max_spawn = .3;        // Final seconds between spawns
 window.max_spawn_time = 120;  // Seconds it takes to reach max_spawn
