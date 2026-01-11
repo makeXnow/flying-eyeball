@@ -59,9 +59,9 @@ export class Game {
         // Initial resize to set dimensions
         this.handleResize();
 
-        // Create hero at initial position (at the top)
+        // Create hero at initial position (at the center)
         const { width, height } = this.renderer.getDimensions();
-        this.hero = new Hero(width / 2, height * 0.18);
+        this.hero = new Hero(width / 2, height / 2);
 
         // Fetch fresh leaderboard
         this.uiManager.fetchLeaderboard();
@@ -78,9 +78,6 @@ export class Game {
         const now = this.getGameTime();
         this.rewardManager.reset(now);
         this.enemyManager.reset(now, this.gameStartTime);
-
-        // Start music
-        this.audioManager.playIntro();
 
         // Set input manager state
         this.inputManager.setUnit(this.renderer.getDimensions().unit);
@@ -139,9 +136,9 @@ export class Game {
                     this.hero.y = dims.height / 2;
                 }
             } else {
-                // Bobbing at top
+                // Bobbing at center
                 this.hero.x = dims.width / 2;
-                this.hero.y = dims.height * 0.18;
+                this.hero.y = dims.height / 2;
             }
         }
     }
@@ -154,11 +151,11 @@ export class Game {
 
         if (this.isGameOverAnimating) {
             const progress = Math.min(1, (now - this.gameOverStartTime) / 800);
-            const topY = height * 0.18;
+            const targetY = height / 2;
             
-            // Interpolate to top
+            // Interpolate to center
             const currentBaseX = width / 2;
-            const currentBaseY = this.deathHeroY + (topY - this.deathHeroY) * progress;
+            const currentBaseY = this.deathHeroY + (targetY - this.deathHeroY) * progress;
             
             this.hero.idleBob(now, currentBaseX, currentBaseY, unit);
 
@@ -175,11 +172,10 @@ export class Game {
 
         if (this.isStartingAnimating) {
             const progress = Math.min(1, (now - this.startingStartTime) / 800);
-            const topY = height * 0.18;
             const centerY = height / 2;
             
             const currentBaseX = width / 2;
-            const currentBaseY = topY + (centerY - topY) * progress;
+            const currentBaseY = centerY; // Stay at center
             
             this.hero.idleBob(now, currentBaseX, currentBaseY, unit);
             
@@ -190,13 +186,19 @@ export class Game {
                 // Initialize timers for fresh start
                 this.rewardManager.reset(now);
                 this.enemyManager.reset(now, this.gameStartTime);
+                
+                // Clear any velocity from idle bobbing
+                if (this.hero) {
+                    this.hero.vx = 0;
+                    this.hero.vy = 0;
+                }
             }
             return;
         }
 
         if (!this.gameActive) {
-            // Just do idle bob animation at the top when game is not active
-            this.hero.idleBob(now, width / 2, height * 0.18, unit);
+            // Just do idle bob animation at the center when game is not active
+            this.hero.idleBob(now, width / 2, height / 2, unit);
             return;
         }
 
@@ -286,7 +288,7 @@ export class Game {
         this.rewardManager.reset(now);
 
         // Restart music
-        this.audioManager.playIntro(true);
+        this.audioManager.restartIntro();
 
         // Reset UI
         this.uiManager.resetUI();

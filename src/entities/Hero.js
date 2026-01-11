@@ -80,7 +80,7 @@ export class Hero {
         
         this.x = baseX;
         const oldY = this.y;
-        this.y = (baseY + unit * 2) + Math.sin(bobPhase) * bobAmt;
+        this.y = baseY + Math.sin(bobPhase) * bobAmt;
         this.vy = this.y - oldY;
         
         // Use the vertical movement to drive the eye direction

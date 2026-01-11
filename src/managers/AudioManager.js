@@ -1,5 +1,6 @@
 export class AudioManager {
     constructor() {
+        // Create audio elements ONCE - they persist across game restarts
         this.intro = new Audio('Sounds/intro.mp3');
         this.song = new Audio('Sounds/song.mp3');
         this.success = new Audio('Sounds/success.wav');
@@ -8,52 +9,104 @@ export class AudioManager {
         this.currentSource = null;
         this.isMuted = false;
         
-        // Handle transitioning from intro to song
-        // Moved to playIntro() to be more efficient
+        // Loading state
+        this.introLoaded = false;
+        this.songLoaded = false;
+        this.introFinishedPlaying = false;
+        this.waitingForGesture = false;
+        
+        // Set up loading listeners
+        this.intro.addEventListener('canplaythrough', () => {
+            this.introLoaded = true;
+            this.tryPlayIntro();
+        }, { once: true });
+        
+        this.song.addEventListener('canplaythrough', () => {
+            this.songLoaded = true;
+            // If intro already finished, start song now
+            if (this.introFinishedPlaying) {
+                this.playSong();
+            }
+        }, { once: true });
+        
+        // Set up intro end detection (0.5s before actual end)
+        this.intro.addEventListener('timeupdate', () => {
+            if (this.intro.duration > 0 && this.intro.currentTime >= this.intro.duration - 0.5) {
+                this.onIntroFinished();
+            }
+        });
+        
+        // Start loading immediately
+        this.intro.preload = 'auto';
+        this.song.preload = 'auto';
+        this.success.preload = 'auto';
+        this.intro.load();
+        this.song.load();
+        this.success.load();
     }
 
-    playIntro(forceRestart = false) {
-        if (!forceRestart && (this.currentSource === this.intro || this.currentSource === this.song)) {
-            if (!this.currentSource.paused) return; // Already playing
-        }
-
-        this.stopAll();
+    tryPlayIntro() {
+        if (!this.introLoaded || this.isMuted) return;
+        
         this.currentSource = this.intro;
         this.intro.currentTime = 0;
         
-        // Remove existing listener if any and add a clean one
-        this.intro.ontimeupdate = () => {
-            if (this.intro.duration > 0 && this.intro.currentTime >= this.intro.duration - 0.5) {
-                // Clear listener immediately to prevent multiple triggers
-                this.intro.ontimeupdate = null;
-                this.intro.pause();
-                this.intro.currentTime = 0;
-                this.playSong();
-            }
-        };
+        const playPromise = this.intro.play();
+        if (playPromise) {
+            playPromise.catch(err => {
+                // Autoplay blocked - wait for user gesture
+                console.log("Autoplay blocked, waiting for user gesture");
+                this.waitingForGesture = true;
+            });
+        }
+    }
 
-        if (!this.isMuted) {
-            this.intro.play().catch(err => console.warn("Audio play blocked:", err));
+    // Called when user interacts with the page
+    onUserGesture() {
+        if (this.waitingForGesture && this.introLoaded && !this.isMuted) {
+            this.waitingForGesture = false;
+            this.intro.play().catch(err => console.warn("Audio play failed:", err));
+        }
+    }
+
+    onIntroFinished() {
+        if (this.introFinishedPlaying) return; // Prevent multiple triggers
+        this.introFinishedPlaying = true;
+        
+        this.intro.pause();
+        this.intro.currentTime = 0;
+        
+        // Play song if it's loaded, otherwise it will play when loaded
+        if (this.songLoaded) {
+            this.playSong();
         }
     }
 
     playSong() {
-        this.stopAll();
-        // Clear intro listener just in case
-        this.intro.ontimeupdate = null;
+        if (this.isMuted) return;
         
         this.currentSource = this.song;
         this.song.currentTime = 0;
-        if (!this.isMuted) {
-            this.song.play().catch(err => console.warn("Audio play blocked:", err));
+        this.song.play().catch(err => console.warn("Song play failed:", err));
+    }
+
+    // Called when "Play Again" is clicked - restart the intro sequence
+    restartIntro() {
+        this.introFinishedPlaying = false;
+        this.song.pause();
+        this.song.currentTime = 0;
+        
+        if (this.introLoaded && !this.isMuted) {
+            this.currentSource = this.intro;
+            this.intro.currentTime = 0;
+            this.intro.play().catch(err => console.warn("Intro play failed:", err));
         }
     }
 
     playSuccess() {
         if (this.isMuted) return;
-        // Clone for overlapping sounds if needed, or just reset and play
         this.success.currentTime = 0;
-        this.success.play().catch(err => console.warn("Audio play blocked:", err));
+        this.success.play().catch(err => console.warn("Success sound failed:", err));
     }
 
     toggleMute() {
@@ -62,8 +115,9 @@ export class AudioManager {
             this.intro.pause();
             this.song.pause();
         } else {
+            // Resume current source
             if (this.currentSource) {
-                this.currentSource.play().catch(err => console.warn("Audio play blocked:", err));
+                this.currentSource.play().catch(err => console.warn("Resume failed:", err));
             }
         }
         return this.isMuted;

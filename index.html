@@ -13,6 +13,9 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#3b82f6">
 
+    <!-- Preload intro music for instant playback -->
+    <link rel="preload" href="Sounds/intro.mp3" as="audio" type="audio/mpeg">
+
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="gameConfig.js"></script>
@@ -176,6 +179,12 @@
             opacity: 0;
             pointer-events: none;
         }
+        
+        #splash-screen:not(.fade-out) ~ #mute-btn {
+            color: white;
+            opacity: 0.6;
+        }
+
         #splash-screen img {
             position: absolute;
             top: 0;
