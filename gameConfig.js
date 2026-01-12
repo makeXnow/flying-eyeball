@@ -11,8 +11,8 @@ window.max_spawn = .3;        // Final seconds between spawns
 window.max_spawn_time = 120;  // Seconds it takes to reach max_spawn
 
 window.max_total_start = 10;  // Initial max enemies on screen
-window.max_total = 15;        // Final max enemies on screen
-window.max_total_time = 120;  // Seconds it takes to reach max_total
+window.max_total = 20;        // Final max enemies on screen
+window.max_total_time = 180;  // Seconds it takes to reach max_total
 
 // Enemy Rules:
 // firstPts: Score needed to start spawning
