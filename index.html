@@ -122,8 +122,8 @@
         
         #mute-btn {
             position: fixed;
+            /* Initial fallback position (will be overridden by JS to anchor to the game frame) */
             bottom: calc(env(safe-area-inset-bottom, 0px) + var(--u) * 4);
-            /* Initial fallback position */
             left: calc(var(--u) * 4);
             z-index: 10001;
             cursor: pointer;
@@ -370,10 +370,11 @@
                 // Position mute button relative to game container
                 if (muteBtn) {
                     const padding = unit * 4;
-                    const safeBottom = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--u') || 0) * 4;
-                    muteBtn.style.left = (rect.left + padding) + 'px';
-                    // Ensure it stays above bottom safe area on mobile
-                    muteBtn.style.bottom = `calc(env(safe-area-inset-bottom, 0px) + ${padding}px)`;
+                    // Anchor to the bottom-left corner of the *game frame* (not the viewport),
+                    // so it never drifts out of the game's visible area on narrow layouts.
+                    const bottomOffsetFromViewport = Math.max(0, (window.innerHeight - rect.bottom) + padding);
+                    muteBtn.style.left = `${Math.max(0, rect.left + padding)}px`;
+                    muteBtn.style.bottom = `calc(env(safe-area-inset-bottom, 0px) + ${bottomOffsetFromViewport}px)`;
                 }
                 
                 if (splash && !splash.classList.contains('ready')) {
