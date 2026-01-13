@@ -130,13 +130,20 @@ export class EnemyManager {
                 newEnemy = new Roach(x, y, angle, unit);
                 break;
         }
-        if (newEnemy) this.enemies.push(newEnemy);
+        if (newEnemy) {
+            this.enemies.push(newEnemy);
+        }
     }
 
-    update(now, width, height, unit, gameStartTime, rewards, hero, onGameOver, currentScore, dt = 1) {
+    update(now, width, height, unit, gameStartTime, hero, onGameOver, currentScore, dt = 1) {
         if (!unit || unit <= 0) return;
 
         const elapsed = now - gameStartTime;
+        
+        // Don't spawn or process collisions during the start animation
+        // This prevents the "immediate death" bug
+        if (elapsed < 1500) return;
+
         const currentMaxTotal = this.getMaxTotal(elapsed);
 
         // Check if it's time to spawn (can spawn multiple to catch up)

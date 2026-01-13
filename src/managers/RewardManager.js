@@ -71,8 +71,8 @@ export class RewardManager {
             reward.update(now);
 
             if (reward.checkCollision(hero.x, hero.y, heroCollisionRadius)) {
-                // Reward collected
-                onScoreChange(reward.pts);
+                // Reward collected - pass both pts and emoji for custom sounds
+                onScoreChange(reward.pts, reward.emoji);
                 hero.addColorBurst(now, reward.color);
                 
                 // Create floating text

@@ -36,6 +36,17 @@ export class SpriteCache {
             
             this.sprites[emoji] = offscreen;
         });
+
+        // Load external images
+        const externalImages = {
+            'Eye_Blur': 'art/Eye_Blur.png'
+        };
+
+        Object.entries(externalImages).forEach(([name, path]) => {
+            const img = new Image();
+            img.src = path;
+            this.sprites[name] = img;
+        });
     }
 
     getSprite(emoji) {

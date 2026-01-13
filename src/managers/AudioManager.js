@@ -1,172 +1,230 @@
+const AudioState = {
+    IDLE: 'idle',
+    INTRO: 'intro',
+    PLAYING: 'playing',
+    GAME_OVER: 'gameover'
+};
+
+/**
+ * HYBRID AudioManager
+ * - HTML5 Audio for music (reliable on mobile)
+ * - Web Audio API for sound effects (no lag)
+ */
 export class AudioManager {
     constructor() {
-        // Create audio elements ONCE - they persist across game restarts
-        this.intro = new Audio('Sounds/intro.mp3');
-        this.song = new Audio('Sounds/song.mp3');
-        this.success = new Audio('Sounds/success.wav');
-        this.fail = new Audio('Sounds/fail.wav');
-        this.song.loop = true;
-        
-        this.currentSource = null;
+        this.state = AudioState.IDLE;
         this.isMuted = false;
         
-        // Loading state
-        this.introLoaded = false;
-        this.songLoaded = false;
-        this.introFinishedPlaying = false;
-        this.userHasInteracted = false; // Track if user has EVER interacted
-        
-        // Set up loading listeners
-        const logLoad = (name) => console.log(`Audio loaded: ${name}`);
-        this.intro.addEventListener('canplaythrough', () => {
-            this.introLoaded = true;
-            logLoad('intro');
-            this.tryPlayIntro();
-        }, { once: true });
-        
-        this.song.addEventListener('canplaythrough', () => {
-            this.songLoaded = true;
-            logLoad('song');
-            // If intro already finished, start song now
-            if (this.introFinishedPlaying) {
-                this.playSong();
-            }
-        }, { once: true });
+        // HTML5 Audio for music only
+        this.intro = new Audio('Sounds/intro.mp3');
+        this.song = new Audio('Sounds/song.mp3');
+        this.song.loop = true;
+        this.intro.preload = 'auto';
+        this.song.preload = 'auto';
+        this.intro.load();
+        this.song.load();
 
-        this.success.addEventListener('canplaythrough', () => logLoad('success'), { once: true });
-        this.fail.addEventListener('canplaythrough', () => logLoad('fail'), { once: true });
+        // Web Audio API for sound effects (no lag)
+        this.ctx = null;
+        this.gainNode = null;
+        this.effectBuffers = {};
+        this.effectsReady = false;
         
         // Set up intro end detection
-        this.intro.addEventListener('ended', () => {
-            console.log("Intro ended naturally");
-            this.onIntroFinished();
-        });
-
         this.intro.addEventListener('timeupdate', () => {
-            if (this.intro.duration > 0 && this.intro.currentTime >= this.intro.duration - 0.5) {
-                console.log("Intro finishing (0.5s remaining)");
+            if (this.state === AudioState.INTRO && 
+                this.intro.duration > 0 && 
+                this.intro.currentTime >= this.intro.duration - 0.5) {
                 this.onIntroFinished();
             }
         });
-        
-        // Start loading immediately
-        this.intro.preload = 'auto';
-        this.song.preload = 'auto';
-        this.success.preload = 'auto';
-        this.fail.preload = 'auto';
-        this.intro.load();
-        this.song.load();
-        this.success.load();
-        this.fail.load();
-    }
 
-    tryPlayIntro() {
-        // We no longer attempt autoplay to avoid "ghost" audio issues
-        if (this.isMuted || this.introFinishedPlaying || !this.userHasInteracted) return;
-        this.actuallyPlayIntro();
-    }
-
-    actuallyPlayIntro() {
-        if (this.isMuted) return;
-        
-        this.currentSource = this.intro;
-        this.intro.playbackRate = 1.0; 
-        
-        // Only reset to 0 if not already playing to avoid "skipping" sound
-        if (this.intro.paused) {
-            this.intro.currentTime = 0;
-        }
-        
-        this.intro.play().catch(err => console.warn("Intro play failed:", err));
-    }
-
-    // Called when user interacts with the page
-    onUserGesture() {
-        if (this.userHasInteracted) return;
-        this.userHasInteracted = true;
-
-        console.log("Audio sequence started by user gesture");
-        
-        // Prime all sounds to unlock them for the browser
-        const sounds = [this.intro, this.song, this.success, this.fail];
-        sounds.forEach(sound => {
-            const playPromise = sound.play();
-            if (playPromise !== undefined) {
-                playPromise.then(() => {
-                    // Immediately pause and reset everything EXCEPT the intro
-                    if (sound !== this.intro || this.introFinishedPlaying) {
-                        sound.pause();
-                        sound.currentTime = 0;
-                    }
-                }).catch(err => {
-                    console.log(`Initial priming for ${sound.src} failed:`, err);
-                });
-            }
+        this.intro.addEventListener('ended', () => {
+            this.onIntroFinished();
         });
     }
 
-    onIntroFinished() {
-        if (this.introFinishedPlaying) return; // Prevent multiple triggers
-        this.introFinishedPlaying = true;
-        
-        this.intro.pause();
+    /**
+     * Initialize and unlock Web Audio - called during user gesture
+     */
+    async initWebAudio() {
+        if (this.ctx) return;
+
+        try {
+            const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+            this.ctx = new AudioContextClass();
+            this.gainNode = this.ctx.createGain();
+            this.gainNode.connect(this.ctx.destination);
+
+            // Aggressively try to resume
+            if (this.ctx.state === 'suspended') {
+                this.ctx.resume();
+                
+                // Silent buffer trick
+                const buffer = this.ctx.createBuffer(1, 1, 22050);
+                const source = this.ctx.createBufferSource();
+                source.buffer = buffer;
+                source.connect(this.ctx.destination);
+                source.start(0);
+            }
+
+            // Start loading effects immediately
+            await this.loadEffects();
+
+        } catch (e) {
+            console.warn('WebAudio init failed:', e);
+        }
+    }
+
+    async loadEffects() {
+        if (!this.ctx) return;
+
+        const manifest = {
+            fail: 'Sounds/fail.wav',
+            success: 'Sounds/success.wav',
+            success_cherry: 'Sounds/success_cherry.wav',
+            success_blueberry: 'Sounds/success_blueberry.mp3'
+        };
+
+        const loadPromises = Object.entries(manifest).map(async ([name, url]) => {
+            try {
+                const response = await fetch(url);
+                const arrayBuffer = await response.arrayBuffer();
+                const decoded = await new Promise((resolve, reject) => {
+                    this.ctx.decodeAudioData(arrayBuffer, resolve, reject);
+                });
+                this.effectBuffers[name] = decoded;
+            } catch (e) {
+                console.warn(`Effect load failed: ${name}`, e);
+            }
+        });
+
+        await Promise.all(loadPromises);
+        this.effectsReady = true;
+    }
+
+    /**
+     * Play a sound effect using Web Audio (no lag!)
+     */
+    playEffect(name) {
+        if (this.isMuted || !this.ctx || !this.effectBuffers[name]) return;
+
+        // Try to resume if still suspended
+        if (this.ctx.state === 'suspended') {
+            this.ctx.resume();
+        }
+
+        // Only play if context is running
+        if (this.ctx.state !== 'running') return;
+
+        try {
+            const source = this.ctx.createBufferSource();
+            source.buffer = this.effectBuffers[name];
+            source.connect(this.gainNode);
+            source.start(0);
+        } catch (e) {
+            console.warn(`Effect play error: ${name}`, e);
+        }
+    }
+
+    /**
+     * Start playing - unlocks HTML5 Audio AND initializes Web Audio
+     */
+    start() {
+        this.state = AudioState.INTRO;
+
+        // Initialize Web Audio for effects (async, but start it now)
+        this.initWebAudio();
+
+        if (this.isMuted) return;
+
+        // Unlock HTML5 Audio elements by playing them briefly at volume 0
+        [this.intro, this.song].forEach(audio => {
+            const vol = audio.volume;
+            audio.volume = 0;
+            audio.play().then(() => {
+                if (audio !== this.intro) {
+                    audio.pause();
+                    audio.currentTime = 0;
+                }
+                audio.volume = vol;
+            }).catch(() => {
+                audio.volume = vol;
+            });
+        });
+
+        // Start intro properly
+        this.intro.volume = 1;
         this.intro.currentTime = 0;
-        
-        // Play song if it's loaded, otherwise it will play when loaded
-        if (this.songLoaded) {
-            this.playSong();
-        }
+        this.intro.play().catch(err => console.warn('Intro play failed:', err));
+
+        // Keep trying to resume Web Audio context
+        this.startContextResumeLoop();
     }
 
-    playSong() {
+    /**
+     * Periodically try to resume the Web Audio context until it's running
+     */
+    startContextResumeLoop() {
+        const tryResume = () => {
+            if (!this.ctx) return;
+            if (this.ctx.state === 'running') return;
+            
+            this.ctx.resume();
+            setTimeout(tryResume, 100);
+        };
+        tryResume();
+    }
+
+    onIntroFinished() {
+        if (this.state !== AudioState.INTRO) return;
+        this.state = AudioState.PLAYING;
+        this.playSongNormal();
+    }
+
+    playSongNormal() {
         if (this.isMuted) return;
-        
-        this.currentSource = this.song;
-        this.song.playbackRate = 1.0; // Reset to normal speed
+        this.song.playbackRate = 1.0;
+        if ('preservesPitch' in this.song) this.song.preservesPitch = true;
         this.song.currentTime = 0;
-        this.song.play().catch(err => console.warn("Song play failed:", err));
+        this.song.play().catch(() => {});
     }
 
-    // Called when "Play Again" is clicked - restart the intro sequence
-    restartIntro() {
-        this.introFinishedPlaying = false;
-        this.song.pause();
-        this.song.currentTime = 0;
-        
-        if (this.introLoaded && !this.isMuted) {
-            this.actuallyPlayIntro();
-        }
-    }
-
-    playSuccess() {
+    playSongSlow() {
         if (this.isMuted) return;
-        this.success.currentTime = 0;
-        this.success.play().catch(err => console.warn("Success sound failed:", err));
+        this.song.playbackRate = 0.5;
+        if ('preservesPitch' in this.song) this.song.preservesPitch = false;
+        this.song.currentTime = 0;
+        this.song.play().catch(() => {});
     }
 
     playFail() {
-        if (this.isMuted) return;
-        this.stopAll(); // Stop music when failing
-        this.fail.currentTime = 0;
-        this.fail.play().catch(err => console.warn("Fail sound failed:", err));
-
-        // Play the main song at half speed for the Game Over screen
-        this.currentSource = this.song;
-        this.song.playbackRate = 0.5;
-        if ('preservesPitch' in this.song) {
-            this.song.preservesPitch = false; // Makes it sound deeper/warped
-        } else if ('mozPreservesPitch' in this.song) {
-            this.song.mozPreservesPitch = false;
-        } else if ('webkitPreservesPitch' in this.song) {
-            this.song.webkitPreservesPitch = false;
-        }
-        
-        // Small delay to ensure stopAll() completion and clean playback start
+        this.state = AudioState.GAME_OVER;
+        this.intro.pause();
+        this.song.pause();
+        this.playEffect('fail');
         setTimeout(() => {
-            if (!this.isMuted && this.currentSource === this.song) {
-                this.song.play().catch(err => console.warn("Game over song failed:", err));
+            if (this.state === AudioState.GAME_OVER) {
+                this.playSongSlow();
             }
         }, 100);
+    }
+
+    playSuccess(emoji = null) {
+        let name = 'success';
+        if (emoji === '🍒') name = 'success_cherry';
+        else if (emoji === '🫐') name = 'success_blueberry';
+        this.playEffect(name);
+    }
+
+    restartIntro() {
+        this.intro.pause();
+        this.intro.currentTime = 0;
+        this.song.pause();
+        this.song.currentTime = 0;
+        this.state = AudioState.INTRO;
+        if (this.isMuted) return;
+        this.intro.play().catch(() => {});
     }
 
     toggleMute() {
@@ -174,33 +232,42 @@ export class AudioManager {
         if (this.isMuted) {
             this.intro.pause();
             this.song.pause();
+            if (this.gainNode && this.ctx) {
+                this.gainNode.gain.setTargetAtTime(0, this.ctx.currentTime, 0.02);
+            }
         } else {
-            // Resume current source
-            if (this.currentSource) {
-                this.currentSource.play().catch(err => console.warn("Resume failed:", err));
+            if (this.state === AudioState.INTRO) {
+                this.intro.play().catch(() => {});
+            } else if (this.state === AudioState.PLAYING || this.state === AudioState.GAME_OVER) {
+                this.song.play().catch(() => {});
+            }
+            if (this.gainNode && this.ctx) {
+                this.gainNode.gain.setTargetAtTime(1, this.ctx.currentTime, 0.02);
             }
         }
         return this.isMuted;
     }
 
-    stopAll() {
-        this.intro.pause();
-        this.song.pause();
-        this.fail.pause();
-        this.intro.currentTime = 0;
-        this.song.currentTime = 0;
-        this.fail.currentTime = 0;
-    }
-
     pause() {
-        if (this.currentSource && !this.currentSource.paused) {
-            this.currentSource.pause();
-        }
+        if (this.state === AudioState.INTRO) this.intro.pause();
+        else this.song.pause();
     }
 
     resume() {
-        if (this.currentSource && this.currentSource.paused && !this.isMuted) {
-            this.currentSource.play().catch(err => console.warn("Resume failed:", err));
+        if (this.isMuted) return;
+        if (this.state === AudioState.INTRO) this.intro.play().catch(() => {});
+        else if (this.state === AudioState.PLAYING || this.state === AudioState.GAME_OVER) {
+            this.song.play().catch(() => {});
         }
     }
+
+    stopAll() {
+        this.intro.pause();
+        this.intro.currentTime = 0;
+        this.song.pause();
+        this.song.currentTime = 0;
+        this.state = AudioState.IDLE;
+    }
+
+    unlock() {} // Compatibility
 }

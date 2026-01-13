@@ -35,10 +35,28 @@ export class UIManager {
         this.restartBtn.addEventListener('click', () => this.handleRestart());
         
         if (this.muteBtn) {
-            this.muteBtn.addEventListener('click', () => {
+            let lastInteractionTime = 0;
+            const doToggle = (e) => {
+                const now = Date.now();
+                if (now - lastInteractionTime < 200) return; // Prevent double firing
+                lastInteractionTime = now;
+
+                if (e) {
+                    if (e.cancelable) e.preventDefault();
+                    e.stopPropagation();
+                }
+                
                 if (this.onMuteToggle) {
                     const isMuted = this.onMuteToggle();
                     this.updateMuteIcon(isMuted);
+                }
+            };
+
+            this.muteBtn.addEventListener('pointerdown', doToggle);
+            this.muteBtn.addEventListener('click', (e) => {
+                // If it was a real mouse click (not a touch emulation)
+                if (e.pointerType === 'mouse' || e.pointerType === undefined) {
+                    doToggle(e);
                 }
             });
         }

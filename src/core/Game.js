@@ -3,7 +3,7 @@ import { Hero } from '../entities/Hero.js';
 import { EnemyManager } from '../managers/EnemyManager.js';
 import { RewardManager } from '../managers/RewardManager.js?v=7';
 import { InputManager } from '../managers/InputManager.js';
-import { AudioManager } from '../managers/AudioManager.js?v=5';
+import { AudioManager } from '../managers/AudioManager.js?v=6';
 import { Renderer } from '../rendering/Renderer.js?v=3';
 import { UIManager } from '../ui/UIManager.js';
 
@@ -85,6 +85,8 @@ export class Game {
 
         // Reset UI (hides game over)
         this.uiManager.resetUI();
+
+        // Audio is now started immediately in main.js to capture the user gesture
 
         // Trigger start animation
         this.isStartingAnimating = true;
@@ -210,12 +212,13 @@ export class Game {
         // Update hero based on input
         const motionDt = dt * (window.global_speed || 1.0);
         this.hero.update(this.inputManager.getState(), width, height, unit, motionDt);
+        this.inputManager.updateKnobPosition();
 
         // Update rewards and handle collection
-        this.rewardManager.update(now, width, height, unit, this.hero, (pts) => {
+        this.rewardManager.update(now, width, height, unit, this.hero, (pts, emoji) => {
             this.score += pts;
             this.uiManager.updateScore(this.score);
-            this.audioManager.playSuccess();
+            this.audioManager.playSuccess(emoji);
         });
 
         // Update enemies
@@ -225,7 +228,6 @@ export class Game {
             height, 
             unit, 
             this.gameStartTime,
-            this.rewardManager.getRewards(),
             this.hero,
             () => this.gameOver(now),
             this.score,
@@ -266,7 +268,7 @@ export class Game {
     }
 
     gameOver(now) {
-        if (!this.gameActive || now - this.gameStartTime < 2000) return; // Prevent multiple calls and initial collisions
+        if (!this.gameActive || now - this.gameStartTime < 2000) return;
         this.gameActive = false;
         this.isGameOverAnimating = true;
         this.gameOverStartTime = now;

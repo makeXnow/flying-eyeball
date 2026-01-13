@@ -149,12 +149,22 @@ export class Hero {
             });
         }
 
+        // Draw blur shadow if available
+        const blurSprite = sprites['Eye_Blur'];
+        if (blurSprite) {
+            ctx.save();
+            ctx.globalAlpha *= 0.25;
+            // Draw blur at about 2.5x the size of the eye to ensure it extends outwards
+            const blurSize = s10 * 2.5;
+            ctx.drawImage(blurSprite, -blurSize/2, -blurSize/2, blurSize, blurSize);
+            ctx.restore();
+        }
+
         // Draw eyeball body
         ctx.beginPath();
         ctx.arc(0, 0, s10, 0, Math.PI * 2);
         ctx.fillStyle = 'white';
-        ctx.shadowBlur = unit * 4.5;
-        ctx.shadowColor = 'rgba(0,0,0,0.3)';
+        ctx.shadowBlur = 0;
         ctx.fill();
 
         // Add a very subtle outline to help visibility on white backgrounds

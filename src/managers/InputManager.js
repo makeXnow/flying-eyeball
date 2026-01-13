@@ -34,15 +34,28 @@ export class InputManager {
 
     setupEventListeners() {
         // Mouse events
-        window.addEventListener('mousedown', (e) => this.handleStart(e));
+        window.addEventListener('mousedown', (e) => {
+            // Don't start joystick if we clicked on the mute button
+            if (e.target && (e.target.id === 'mute-btn' || e.target.closest('#mute-btn'))) {
+                return;
+            }
+            this.handleStart(e);
+        });
         window.addEventListener('mousemove', (e) => this.handleMove(e));
         window.addEventListener('mouseup', () => this.handleEnd());
 
         // Touch events
         window.addEventListener('touchstart', (e) => {
+            // Check for mute button BEFORE preventDefault to allow click event to fire
+            const touchTarget = e.target;
+            const isMuteBtn = touchTarget && (touchTarget.id === 'mute-btn' || touchTarget.closest('#mute-btn'));
+            if (isMuteBtn) {
+                return; // Don't prevent default, let click event fire
+            }
+            
             // Only prevent default if we're actually starting a joystick interaction
             if (this.gameActive) {
-                e.preventDefault();
+                if (e.cancelable) e.preventDefault();
                 this.handleStart(e.touches[0]);
             }
         }, { passive: false });
@@ -84,8 +97,6 @@ export class InputManager {
         const rect = this.canvas.getBoundingClientRect();
         this.state.currX = e.clientX - rect.left;
         this.state.currY = e.clientY - rect.top;
-
-        this.updateKnobPosition();
     }
 
     handleEnd() {

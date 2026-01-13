@@ -28,6 +28,7 @@
             margin: 0;
             padding: 0;
             overflow: hidden;
+            background-color: #0f172a;
         }
         body {
             background-color: #0f172a; /* Even deeper dark blue-gray */
@@ -39,22 +40,23 @@
             -webkit-touch-callout: none;
             display: flex;
             justify-content: center;
-            align-items: flex-end;
+            align-items: flex-start;
             height: 100dvh; 
             width: 100dvw;
             margin: 0;
             padding: 0;
+            padding-top: env(safe-area-inset-top, 0px);
+            box-sizing: border-box;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
         #game-container {
             position: relative;
             width: 100%;
-            height: 100%;
+            height: auto;
             max-width: calc(100dvh * (9 / 16));
-            max-height: calc(100dvw * (16 / 9));
+            max-height: 100dvh;
             aspect-ratio: 9 / 16;
             background: white;
-            box-shadow: 0 0 150px 40px rgba(0,0,0,0.8);
             z-index: 10;
         }
         canvas {
@@ -120,9 +122,9 @@
         
         #mute-btn {
             position: fixed;
-            bottom: calc(var(--u) * 4);
-            /* Position relative to the game container's left edge */
-            left: max(calc(var(--u) * 4), calc(50vw - (min(100dvw, calc(100dvh * 9 / 16)) / 2) + (var(--u) * 4)));
+            bottom: calc(env(safe-area-inset-bottom, 0px) + var(--u) * 4);
+            /* Initial fallback position */
+            left: calc(var(--u) * 4);
             z-index: 10001;
             cursor: pointer;
             color: rgb(0, 0, 0);
@@ -132,14 +134,21 @@
             align-items: center;
             justify-content: center;
             transition: transform 0.2s ease, opacity 0.2s ease;
+            /* Increase hit area for mobile */
+            width: calc(var(--u) * 12);
+            height: calc(var(--u) * 12);
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.01);
         }
         #mute-btn:active {
             transform: scale(0.9);
+            background: rgba(255, 255, 255, 0.1);
         }
         #mute-btn svg {
             width: calc(var(--u) * 8);
             height: calc(var(--u) * 8);
             stroke-width: 3px;
+            pointer-events: none;
         }
         
         .name-input {
@@ -170,7 +179,9 @@
             background: #0f172a;
             display: flex;
             justify-content: center;
-            align-items: flex-end;
+            align-items: flex-start;
+            padding-top: env(safe-area-inset-top, 0px);
+            box-sizing: border-box;
             z-index: 9999;
             opacity: 1;
             transition: opacity 0.3s ease-out;
@@ -199,12 +210,11 @@
         .splash-frame {
             position: relative;
             width: 100%;
-            height: 100%;
+            height: auto;
             max-width: calc(100dvh * (9 / 16));
-            max-height: calc(100dvw * (16 / 9));
+            max-height: 100dvh;
             aspect-ratio: 9 / 16;
             background: transparent;
-            box-shadow: 0 0 150px 40px rgba(0,0,0,0.8);
             display: flex;
             justify-content: center;
             align-items: center;
@@ -282,15 +292,17 @@
         }
 
         /* 
-           Apply 'snap' behavior only when within 15% of standard 9:16 portrait ratio.
+           Apply 'snap' behavior only when within 5% of standard 9:16 portrait ratio.
            - 9:16 is 0.5625. 
-           - 15% range is 0.489 to 0.647.
+           - 5% range is 0.534 to 0.591.
+           This prevents taller phones (like 19.5:9) from incorrectly snapping.
         */
-        @media (min-aspect-ratio: 489/1000) and (max-aspect-ratio: 647/1000) {
+        @media (min-aspect-ratio: 534/1000) and (max-aspect-ratio: 591/1000) {
             #game-container, .splash-frame {
                 box-shadow: none;
                 max-width: none;
                 max-height: none;
+                height: 100dvh;
             }
             #splash-screen img {
                 object-fit: cover;
@@ -348,11 +360,21 @@
         function fastUpdateUnit() {
             const container = document.getElementById('game-container');
             const splash = document.getElementById('splash-screen');
+            const muteBtn = document.getElementById('mute-btn');
             if (container) {
                 const rect = container.getBoundingClientRect();
                 const height = rect.height || window.innerHeight;
                 const unit = Math.max(0.1, height / 200);
                 document.documentElement.style.setProperty('--u', unit + 'px');
+                
+                // Position mute button relative to game container
+                if (muteBtn) {
+                    const padding = unit * 4;
+                    const safeBottom = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--u') || 0) * 4;
+                    muteBtn.style.left = (rect.left + padding) + 'px';
+                    // Ensure it stays above bottom safe area on mobile
+                    muteBtn.style.bottom = `calc(env(safe-area-inset-bottom, 0px) + ${padding}px)`;
+                }
                 
                 if (splash && !splash.classList.contains('ready')) {
                     // Force a small delay to ensure CSS variables are applied

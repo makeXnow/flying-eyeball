@@ -34,7 +34,7 @@ export class Ant extends BaseEnemy {
         return this.history[idx];
     }
 
-    update(now, width, height, unit, rewards, dt = 1) {
+    update(now, width, height, unit, dt = 1) {
         if (!this.leader) {
             super.update(now, width, height, unit, dt);
             this.distTraveled += this.speed * dt;
@@ -58,17 +58,6 @@ export class Ant extends BaseEnemy {
                 this.vy = target.vy; 
             }
         }
-        
-        if (rewards) {
-            for (let i = rewards.length - 1; i >= 0; i--) {
-                const r = rewards[i];
-                const dx = this.x - r.x;
-                const dy = this.y - r.y;
-                const distSq = dx * dx + dy * dy;
-                const radiusSum = this.size * unit + r.size;
-                if (distSq < radiusSum * radiusSum) rewards.splice(i, 1);
-            }
-        }
     }
 }
 
@@ -86,8 +75,8 @@ export class AntGroup {
         }
     }
 
-    update(now, width, height, unit, rewards, dt = 1) {
-        this.ants.forEach(ant => ant.update(now, width, height, unit, rewards, dt));
+    update(now, width, height, unit, dt = 1) {
+        this.ants.forEach(ant => ant.update(now, width, height, unit, dt));
     }
 
     draw(ctx, sprites, unit) {
