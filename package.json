@@ -1,0 +1,14 @@
+{
+  "name": "flying-eyeball",
+  "version": "1.0.0",
+  "description": "Flying Eyeball game",
+  "scripts": {
+    "dev": "npx wrangler pages dev . --ip 127.0.0.1",
+    "deploy": "npx wrangler pages deploy . --project-name flying-eyeball"
+  },
+  "devDependencies": {
+    "wrangler": "^3.0.0"
+  },
+  "author": "",
+  "license": "ISC"
+}
