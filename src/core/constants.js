@@ -1,5 +1,5 @@
-// API endpoint for leaderboard
-export const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz4ysJ9aIVSl1EhRGIAPhbdoZ267jL0cfcsfVAumCCpBkl-jeh1voKdiEVylWmDjPJl/exec';
+// Relative API path — works under /apps/flyingeyeball/ and local pages dev
+export const SCORES_API = 'api/scores';
 
 // Sprite rendering resolution
 export const SPRITE_RESOLUTION = 256;

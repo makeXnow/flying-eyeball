@@ -1,4 +1,4 @@
-import { SCRIPT_URL } from '../core/constants.js';
+import { SCORES_API } from '../core/constants.js';
 
 export class Leaderboard {
     constructor(listElement) {
@@ -13,28 +13,23 @@ export class Leaderboard {
         this.isFetching = true;
 
         try {
-            const res = await fetch(
-                `${SCRIPT_URL}?action=list&v=${Math.random()}`,
-                { method: 'GET', cache: 'no-cache' }
-            );
-            const text = await res.text();
-            const data = JSON.parse(text);
+            const res = await fetch(`${SCORES_API}?v=${Date.now()}`, {
+                method: 'GET',
+                cache: 'no-cache',
+            });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
+            const rows = Array.isArray(data.scores) ? data.scores : [];
 
-            const allRows = data.version === "7.2" 
-                ? (data.rows || []) 
-                : (Array.isArray(data) ? data : []);
-
-            const rawRows = allRows.slice(1);
-            this.scores = rawRows
-                .map(row => ({
-                    name: row.name || "Anonymous",
-                    score: parseFloat(row.score) || 0
+            this.scores = rows
+                .map((row) => ({
+                    name: row.name || 'Anonymous',
+                    score: parseFloat(row.score) || 0,
                 }))
                 .sort((a, b) => b.score - a.score)
                 .slice(0, 5);
-
         } catch (err) {
-            console.error("Leaderboard Pull Error:", err);
+            console.error('Leaderboard Pull Error:', err);
         } finally {
             this.isFetching = false;
         }
@@ -42,17 +37,24 @@ export class Leaderboard {
 
     async saveScore(name, scoreValue) {
         try {
-            const params = new URLSearchParams({
-                name,
-                score: scoreValue,
-                action: 'append'
+            const res = await fetch(SCORES_API, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, score: scoreValue }),
+                cache: 'no-cache',
             });
-            await fetch(
-                `${SCRIPT_URL}?${params.toString()}`,
-                { method: 'GET', mode: 'no-cors', cache: 'no-cache' }
-            );
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
+            if (Array.isArray(data.scores)) {
+                this.scores = data.scores
+                    .map((row) => ({
+                        name: row.name || 'Anonymous',
+                        score: parseFloat(row.score) || 0,
+                    }))
+                    .slice(0, 5);
+            }
         } catch (err) {
-            console.error("Score Push Error:", err);
+            console.error('Score Push Error:', err);
         }
     }
 
@@ -103,13 +105,13 @@ export class Leaderboard {
 
         // Insert placeholder for input if score qualifies
         if (fitsAt !== -1 && currentScore > 0) {
-            tempScores.splice(fitsAt, 0, { name: "__INPUT__", score: currentScore });
+            tempScores.splice(fitsAt, 0, { name: '__INPUT__', score: currentScore });
             tempScores = tempScores.slice(0, 5);
         }
 
         this.listElement.innerHTML = tempScores.map((s, i) => {
             const rankIcon = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : '';
-            const isEntry = s.name === "__INPUT__";
+            const isEntry = s.name === '__INPUT__';
 
             if (isEntry) {
                 return `
