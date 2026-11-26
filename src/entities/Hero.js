@@ -5,6 +5,7 @@ import {
     HERO_FLAP_UP_MAX,
     HERO_FLAP_DOWN_MIN
 } from '../core/constants.js';
+import { NATALIA_MODE } from '../core/mode.js';
 
 export class Hero {
     constructor(x, y) {
@@ -160,6 +161,12 @@ export class Hero {
             ctx.restore();
         }
 
+        if (NATALIA_MODE) {
+            this.drawNatalia(ctx, sprites.Natalia, s10, now);
+            ctx.restore();
+            return;
+        }
+
         // Draw eyeball body
         ctx.beginPath();
         ctx.arc(0, 0, s10, 0, Math.PI * 2);
@@ -189,6 +196,47 @@ export class Hero {
         ctx.fill();
 
         ctx.restore();
+    }
+
+    drawNatalia(ctx, face, radius, now) {
+        // Use the same collision radius and wings as classic mode.
+        if (!face?.complete || !face.naturalWidth) return;
+        if (!this.faceCanvas) {
+            this.faceCanvas = document.createElement('canvas');
+            this.faceCanvas.width = 256;
+            this.faceCanvas.height = 352;
+        }
+        const canvas = this.faceCanvas;
+        const layer = canvas.getContext('2d');
+        const { width, height } = canvas;
+        layer.clearRect(0, 0, width, height);
+        layer.drawImage(face, 0, 0, width, height);
+        this.colorBursts = this.colorBursts.filter(burst => now - burst.time < 2250);
+        const active = this.colorBursts;
+        if (active.length) {
+            const colors = [...new Set(active.map(burst => burst.color))];
+            const gradient = layer.createLinearGradient(0, 0, width, height * 0.25);
+            colors.forEach((color, i) => gradient.addColorStop(
+                colors.length === 1 ? 0 : i / (colors.length - 1), color));
+            if (colors.length === 1) gradient.addColorStop(1, colors[0]);
+            const newest = active[active.length - 1];
+            const elapsed = now - newest.time;
+            layer.save();
+            // Clip to the head silhouette so wings never receive the tint.
+            layer.globalCompositeOperation = 'source-atop';
+            layer.globalAlpha = 0.7 * Math.min(1, elapsed / 120, (2250 - elapsed) / 500);
+            layer.fillStyle = gradient;
+            layer.fillRect(0, 0, width, height);
+            layer.restore();
+            // Reapply face detail above the tint, keeping every feature visible.
+            layer.save();
+            layer.globalCompositeOperation = 'luminosity';
+            layer.drawImage(face, 0, 0, width, height);
+            layer.restore();
+        }
+        const h = radius * 2;
+        const w = h * width / height;
+        ctx.drawImage(canvas, -w / 2, -h / 2, w, h);
     }
 
     drawColorBursts(ctx, irisRadius, now) {
@@ -228,3 +276,4 @@ export class Hero {
         }
     }
 }
+

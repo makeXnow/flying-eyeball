@@ -1,4 +1,5 @@
 import { SPRITE_RESOLUTION, REWARD_DATA, ENEMY_CONFIG } from '../core/constants.js';
+import { NATALIA_MODE } from '../core/mode.js';
 
 export class SpriteCache {
     constructor() {
@@ -41,6 +42,7 @@ export class SpriteCache {
         const externalImages = {
             'Eye_Blur': 'art/Eye_Blur.png'
         };
+        if (NATALIA_MODE) externalImages.Natalia = 'art/natalia-face.png';
 
         Object.entries(externalImages).forEach(([name, path]) => {
             const img = new Image();
@@ -57,3 +59,4 @@ export class SpriteCache {
         return this.sprites;
     }
 }
+
