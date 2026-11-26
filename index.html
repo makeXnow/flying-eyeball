@@ -3,15 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Flying Eyeball</title>
     <script>
+        const nataliaMode = /\/natalia\/?$/i.test(location.pathname);
+        document.documentElement.dataset.gameMode = nataliaMode ? 'natalia' : 'classic';
+        if (nataliaMode) document.title = 'Flying Natalia';
         // Keep asset/API URLs at the app root, including when hosted under a prefix.
-        if (/\/natalia\/?$/i.test(location.pathname)) {
+        if (nataliaMode) {
             const base = document.createElement('base');
             base.href = location.pathname.replace(/natalia\/?$/i, '');
             document.head.appendChild(base);
         }
+        const splashPreload = document.createElement('link');
+        splashPreload.rel = 'preload';
+        splashPreload.as = 'image';
+        splashPreload.href = nataliaMode ? 'art/natalia-splashscreen.png' : 'art/splashscreen.png';
+        document.head.appendChild(splashPreload);
     </script>
-    <title>Flying Eyeball</title>
     
     <!-- PWA & Mobile -->
     <link rel="manifest" href="manifest.json?v=3">
@@ -316,6 +324,10 @@
                 object-fit: cover;
             }
         }
+        html[data-game-mode="natalia"] #splash-screen img {
+            object-fit: contain;
+            background: #f0f9ff;
+        }
     </style>
 </head>
     <body oncontextmenu="return false;" style="touch-action: none; overflow: hidden;">
@@ -323,7 +335,15 @@
     <!-- Splash Screen - shown on initial load only -->
     <div id="splash-screen">
         <div class="splash-frame">
-            <img src="art/splashscreen.png" alt="Flying Eyeball">
+            <img id="splash-image" alt="">
+            <script>
+                // Set the only image source while parsing, before the first paint.
+                // No default src for the preload scanner to fetch and flash first.
+                const splashImage = document.getElementById('splash-image');
+                const isNataliaSplash = document.documentElement.dataset.gameMode === 'natalia';
+                splashImage.src = isNataliaSplash ? 'art/natalia-splashscreen.png' : 'art/splashscreen.png';
+                splashImage.alt = isNataliaSplash ? 'Flying Natalia' : 'Flying Eyeball';
+            </script>
             <button id="start-btn" class="liquid-glass-btn">Start Game</button>
         </div>
     </div>
@@ -367,7 +387,7 @@
     </div>
 </div>
 
-    <script type="module" src="src/main.js?v=11"></script>
+    <script type="module" src="src/main.js?v=12"></script>
     <script>
         // Inline unit calculation for immediate, reliable startup
         function fastUpdateUnit() {

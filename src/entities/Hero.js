@@ -212,22 +212,28 @@ export class Hero {
         layer.clearRect(0, 0, width, height);
         layer.drawImage(face, 0, 0, width, height);
         this.colorBursts = this.colorBursts.filter(burst => now - burst.time < 2250);
-        const active = this.colorBursts;
-        if (active.length) {
-            const colors = [...new Set(active.map(burst => burst.color))];
-            const gradient = layer.createLinearGradient(0, 0, width, height * 0.25);
-            colors.forEach((color, i) => gradient.addColorStop(
-                colors.length === 1 ? 0 : i / (colors.length - 1), color));
-            if (colors.length === 1) gradient.addColorStop(1, colors[0]);
-            const newest = active[active.length - 1];
-            const elapsed = now - newest.time;
+        // The nose is the origin of every fruit's expanding color burst.
+        // Older colors stay underneath, so new pickups bloom through them.
+        const noseX = width * 0.5;
+        const noseY = height * 0.69;
+        const maxRadius = Math.hypot(width / 2, Math.max(noseY, height - noseY));
+        for (const burst of this.colorBursts) {
+            const elapsed = now - burst.time;
+            if (elapsed <= 0) continue;
+            const radius = maxRadius * Math.min(1, elapsed / 750);
+            const gradient = layer.createRadialGradient(noseX, noseY, 0, noseX, noseY, radius);
+            gradient.addColorStop(0, burst.color);
+            gradient.addColorStop(0.25, burst.color);
+            gradient.addColorStop(1, 'rgba(0,0,0,0)');
             layer.save();
             // Clip to the head silhouette so wings never receive the tint.
             layer.globalCompositeOperation = 'source-atop';
-            layer.globalAlpha = 0.7 * Math.min(1, elapsed / 120, (2250 - elapsed) / 500);
+            layer.globalAlpha = 0.8 * Math.min(1, elapsed / 120, (2250 - elapsed) / 500);
             layer.fillStyle = gradient;
             layer.fillRect(0, 0, width, height);
             layer.restore();
+        }
+        if (this.colorBursts.length) {
             // Reapply face detail above the tint, keeping every feature visible.
             layer.save();
             layer.globalCompositeOperation = 'luminosity';

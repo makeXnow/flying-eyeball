@@ -1,5 +1,5 @@
 import { HERO_COLLISION_RADIUS } from './constants.js';
-import { Hero } from '../entities/Hero.js';
+import { Hero } from '../entities/Hero.js?v=12';
 import { EnemyManager } from '../managers/EnemyManager.js';
 import { RewardManager } from '../managers/RewardManager.js?v=7';
 import { InputManager } from '../managers/InputManager.js';
@@ -313,3 +313,4 @@ export class Game {
         this.gameActive = false;
     }
 }
+

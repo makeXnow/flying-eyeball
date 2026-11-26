@@ -1,5 +1,4 @@
-import { Game } from './core/Game.js?v=11';
-import { NATALIA_MODE } from './core/mode.js';
+import { Game } from './core/Game.js?v=12';
 
 let gameStarted = false;
 let gameInstance = null;
@@ -17,16 +16,6 @@ function hideSplashScreen() {
 function startGame() {
     const splash = document.getElementById('splash-screen');
     const startBtn = document.getElementById('start-btn');
-    if (NATALIA_MODE) {
-        document.title = 'Flying Natalia';
-        const image = splash?.querySelector('img');
-        if (image) {
-            image.src = 'art/natalia-splashscreen.png';
-            image.alt = 'Flying Natalia';
-            image.style.objectFit = 'contain';
-            image.style.background = '#f0f9ff';
-        }
-    }
     
     // Create game instance (AudioManager will preload sounds)
     gameInstance = new Game();
