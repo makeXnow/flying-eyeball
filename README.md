@@ -15,7 +15,8 @@ Natalia uses the same movement, collision size, rewards, and animated wings as c
 Fruit pickups blend their colors across her face, fading over 2.25 seconds.
 
 - `art/natalia-face.png`: transparent face sprite with direct eye contact.
-- `art/natalia-preview.png`: approved gradient concept, also used on the Natalia splash screen.
+- `art/natalia-preview.png`: approved gradient concept.
+- `art/natalia-splashscreen.png`: splash screen used only for Natalia mode.
 
 The main leaderboard includes all runs; the Natalia leaderboard includes only Natalia runs.
 A Natalia run occupies one database row, so qualifying on both boards never duplicates it.
