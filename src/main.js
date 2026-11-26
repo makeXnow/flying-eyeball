@@ -21,7 +21,7 @@ function startGame() {
         document.title = 'Flying Natalia';
         const image = splash?.querySelector('img');
         if (image) {
-            image.src = 'art/natalia-preview.png';
+            image.src = 'art/natalia-splashscreen.png';
             image.alt = 'Flying Natalia';
             image.style.objectFit = 'contain';
             image.style.background = '#f0f9ff';
