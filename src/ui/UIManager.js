@@ -133,6 +133,12 @@ export class UIManager {
         this.leaderboard.render(false, score, (hasName) => {
             if (this.restartBtn) this.restartBtn.innerText = hasName ? "Save & Play Again" : "Play Again";
         });
+        // Refresh both boards before deciding which leaderboard this run qualifies for.
+        this.leaderboard.fetch().then(() => {
+            if (this.gameOverScreen.style.display !== 'none') {
+                this.renderLeaderboard(false, score);
+            }
+        });
     }
 
     hideGameOver() {
@@ -149,11 +155,17 @@ export class UIManager {
     }
 
     async handleRestart() {
+        if (this.restartBtn.disabled) return;
         const name = this.leaderboard.getEnteredName();
         const score = parseInt(this.finalScoreVal.innerText) || 0;
         
         if (name && score > 0) {
-            await this.leaderboard.saveScore(name, score);
+            this.restartBtn.disabled = true;
+            this.restartBtn.innerText = 'Saving…';
+            const saved = await this.leaderboard.saveScore(name, score);
+            this.restartBtn.disabled = false;
+            this.restartBtn.innerText = saved ? 'Play Again' : 'Retry Save';
+            return;
         }
         
         if (this.onRestart) {
@@ -167,3 +179,4 @@ export class UIManager {
         });
     }
 }
+

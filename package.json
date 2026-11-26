@@ -1,8 +1,10 @@
 {
   "name": "flying-eyeball",
   "version": "1.0.0",
+  "type": "module",
   "description": "Flying Eyeball game",
   "scripts": {
+    "test": "node tests/natalia.test.mjs",
     "dev": "npx wrangler pages dev . --ip 127.0.0.1",
     "db:migrate:local": "wrangler d1 migrations apply flying-eyeball-db --local",
     "db:migrate:remote": "wrangler d1 migrations apply flying-eyeball-db --remote",
@@ -16,3 +18,4 @@
   "author": "",
   "license": "ISC"
 }
+
