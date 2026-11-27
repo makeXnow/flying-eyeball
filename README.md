@@ -33,6 +33,11 @@ Each face mode also uses its own matching illustrated splash screen at
 `/Eyeball` opens the original mode. The same routes work under the app's hosting prefix,
 with lowercase names or a trailing slash. The picker is also available at `/special-mode`.
 The new faces keep the same wings, movement, collision radius, and nose-outward color bursts.
+Each face has optimized smile and surprise assets at `art/<name>-face-smile.webp` and
+`art/<name>-face-surprise.webp`. The picker gently rocks and alternates expressions every
+second, with staggered timing and a still smile for reduced-motion preferences.
+During gameplay, any active fruit-color burst shows the surprised expression; the smile
+returns after the last burst expires (2.25 seconds after the most recent pickup), or on reset.
 No additional database migration is needed: modes use the existing `scores.mode` column.
 
 ## Testing and deployment

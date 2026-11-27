@@ -1,4 +1,4 @@
-import { SpriteCache } from './SpriteCache.js?v=13';
+import { SpriteCache } from './SpriteCache.js?v=14';
 
 export class Renderer {
     constructor(canvas) {

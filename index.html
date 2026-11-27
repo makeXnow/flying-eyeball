@@ -20,6 +20,14 @@
         splashPreload.as = 'image';
         splashPreload.href = characterId ? `art/${characterId}-splashscreen.png?v=action-1` : 'art/splashscreen.png';
         document.head.appendChild(splashPreload);
+        if (characterId) {
+            for (const expression of ['smile', 'surprise']) {
+                const preload = document.createElement('link');
+                preload.rel = 'preload'; preload.as = 'image';
+                preload.href = `art/${characterId}-face-${expression}.webp`;
+                document.head.appendChild(preload);
+            }
+        }
     </script>
     
     <!-- PWA & Mobile -->
@@ -394,7 +402,7 @@
     </div>
 </div>
 
-    <script type="module" src="src/main.js?v=13"></script>
+    <script type="module" src="src/main.js?v=14"></script>
     <script>
         // Inline unit calculation for immediate, reliable startup
         function fastUpdateUnit() {

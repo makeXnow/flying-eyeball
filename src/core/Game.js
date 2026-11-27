@@ -1,11 +1,11 @@
 import { HERO_COLLISION_RADIUS } from './constants.js';
-import { Hero } from '../entities/Hero.js?v=13';
+import { Hero } from '../entities/Hero.js?v=14';
 import { EnemyManager } from '../managers/EnemyManager.js';
 import { RewardManager } from '../managers/RewardManager.js?v=7';
 import { InputManager } from '../managers/InputManager.js';
 import { AudioManager } from '../managers/AudioManager.js?v=6';
-import { Renderer } from '../rendering/Renderer.js?v=13';
-import { UIManager } from '../ui/UIManager.js?v=13';
+import { Renderer } from '../rendering/Renderer.js?v=14';
+import { UIManager } from '../ui/UIManager.js?v=14';
 
 export class Game {
     constructor() {

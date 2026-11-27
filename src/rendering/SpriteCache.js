@@ -1,5 +1,5 @@
 import { SPRITE_RESOLUTION, REWARD_DATA, ENEMY_CONFIG } from '../core/constants.js';
-import { FACE_MODE, FACE_SPRITE } from '../core/mode.js?v=13';
+import { FACE_MODE, FACE_SPRITE, FACE_REACTION_SPRITE } from '../core/mode.js?v=14';
 
 export class SpriteCache {
     constructor() {
@@ -43,6 +43,7 @@ export class SpriteCache {
             'Eye_Blur': 'art/Eye_Blur.png'
         };
         if (FACE_MODE) externalImages.Face = FACE_SPRITE;
+        if (FACE_MODE) externalImages.FaceReaction = FACE_REACTION_SPRITE;
 
         Object.entries(externalImages).forEach(([name, path]) => {
             const img = new Image();

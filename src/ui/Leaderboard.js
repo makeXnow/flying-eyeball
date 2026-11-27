@@ -1,5 +1,5 @@
 import { SCORES_API } from '../core/constants.js';
-import { FACE_MODE, MODE_ID, MODE_NAME } from '../core/mode.js?v=13';
+import { FACE_MODE, MODE_ID, MODE_NAME } from '../core/mode.js?v=14';
 
 const escapeHtml = (value) => String(value).replace(/[&<>"']/g, char =>
     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));

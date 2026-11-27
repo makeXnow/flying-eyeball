@@ -5,7 +5,7 @@ import {
     HERO_FLAP_UP_MAX,
     HERO_FLAP_DOWN_MIN
 } from '../core/constants.js';
-import { FACE_MODE, CURRENT_MODE } from '../core/mode.js?v=13';
+import { FACE_MODE, CURRENT_MODE } from '../core/mode.js?v=14';
 
 export class Hero {
     constructor(x, y) {
@@ -162,7 +162,7 @@ export class Hero {
         }
 
         if (FACE_MODE) {
-            this.drawNatalia(ctx, sprites.Face, s10, now);
+            this.drawFace(ctx, sprites, s10, now);
             ctx.restore();
             return;
         }
@@ -198,20 +198,26 @@ export class Hero {
         ctx.restore();
     }
 
-    drawNatalia(ctx, face, radius, now) {
+    drawFace(ctx, sprites, radius, now) {
         // Use the same collision radius and wings as classic mode.
+        this.colorBursts = this.colorBursts.filter(burst => now - burst.time < 2250);
+        const normalFace = sprites.Face;
+        const hasColor = this.colorBursts.some(burst => now >= burst.time);
+        const reaction = sprites.FaceReaction;
+        const face = hasColor && reaction?.complete && reaction.naturalWidth ? reaction : normalFace;
         if (!face?.complete || !face.naturalWidth) return;
         if (!this.faceCanvas) {
             this.faceCanvas = document.createElement('canvas');
             this.faceCanvas.width = 256;
-            this.faceCanvas.height = Math.round(256 * face.naturalHeight / face.naturalWidth);
+            // Keep identical framing while swapping expressions.
+            const sizingFace = normalFace?.naturalWidth ? normalFace : face;
+            this.faceCanvas.height = Math.round(256 * sizingFace.naturalHeight / sizingFace.naturalWidth);
         }
         const canvas = this.faceCanvas;
         const layer = canvas.getContext('2d');
         const { width, height } = canvas;
         layer.clearRect(0, 0, width, height);
         layer.drawImage(face, 0, 0, width, height);
-        this.colorBursts = this.colorBursts.filter(burst => now - burst.time < 2250);
         // The nose is the origin of every fruit's expanding color burst.
         // Older colors stay underneath, so new pickups bloom through them.
         const noseX = width * 0.5;
