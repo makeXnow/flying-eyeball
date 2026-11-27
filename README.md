@@ -36,6 +36,9 @@ The new faces keep the same wings, movement, collision radius, and nose-outward 
 Each face has optimized smile and surprise assets at `art/<name>-face-smile.webp` and
 `art/<name>-face-surprise.webp`. The picker gently rocks and alternates expressions every
 second, with staggered timing and a still smile for reduced-motion preferences.
+Starting delays use randomly assigned slots separated by `1 second / number of faces`
+(currently 0, 0.2, 0.4, 0.6, and 0.8 seconds). All decoded faces start on a shared frame,
+and the spacing automatically adjusts when the character list grows.
 During gameplay, any active fruit-color burst shows the surprised expression; the smile
 returns after the last burst expires (2.25 seconds after the most recent pickup), or on reset.
 No additional database migration is needed: modes use the existing `scores.mode` column.
