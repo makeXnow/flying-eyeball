@@ -1,15 +1,21 @@
 import { FACE_MODES } from './core/modeCatalog.js?v=14';
 import { Hero } from './entities/Hero.js?v=14';
 import { SpriteCache } from './rendering/SpriteCache.js?v=14';
+import { REWARD_DATA } from './core/constants.js';
+
+const shuffled = items => {
+    const result = [...items];
+    for (let index = result.length - 1; index > 0; index--) {
+        const other = Math.floor(Math.random() * (index + 1));
+        [result[index], result[other]] = [result[other], result[index]];
+    }
+    return result;
+};
 
 const picker = document.getElementById('mode-picker');
 const expressionHoldSeconds = 1;
-const phaseSlots = FACE_MODES.map((_, index) => index);
 // Give each face a random, unique slot across one expression's holding time.
-for (let index = phaseSlots.length - 1; index > 0; index--) {
-    const other = Math.floor(Math.random() * (index + 1));
-    [phaseSlots[index], phaseSlots[other]] = [phaseSlots[other], phaseSlots[index]];
-}
+const phaseSlots = shuffled(FACE_MODES.map((_, index) => index));
 const readyFaces = [];
 for (const [index, mode] of FACE_MODES.entries()) {
     const link = document.createElement('a');
@@ -18,7 +24,11 @@ for (const [index, mode] of FACE_MODES.entries()) {
     link.setAttribute('aria-label', `Play ${mode.name}`);
     link.dataset.mode = mode.id;
     link.style.setProperty('--phase', `${phaseSlots[index] * expressionHoldSeconds / FACE_MODES.length}s`);
-    link.innerHTML = `<div class="portrait"><div class="portrait-halo"></div><span class="portrait-fruit fruit-one" aria-hidden="true">🫐</span><span class="portrait-fruit fruit-two" aria-hidden="true">🍋</span><div class="portrait-flight"><span class="portrait-wing wing-left" aria-hidden="true">🪽</span><span class="portrait-wing wing-right" aria-hidden="true">🪽</span><img class="face-smile" src="${mode.sprite}" alt="${mode.name}" width="124" height="148"><img class="face-surprise" src="${mode.surpriseSprite}" alt="" aria-hidden="true" width="124" height="148"></div></div><strong>${mode.name}</strong><span class="play">Play →</span>`;
+    const fruitCount = 1 + Math.floor(Math.random() * 4);
+    const fruitSlots = shuffled([0, 1, 2, 3]);
+    const fruitMarkup = shuffled(Object.keys(REWARD_DATA)).slice(0, fruitCount)
+        .map((fruit, index) => `<span class="portrait-fruit fruit-slot-${fruitSlots[index]}" aria-hidden="true">${fruit}</span>`).join('');
+    link.innerHTML = `<div class="portrait"><div class="portrait-halo"></div>${fruitMarkup}<div class="portrait-flight"><span class="portrait-wing wing-left" aria-hidden="true">🪽</span><span class="portrait-wing wing-right" aria-hidden="true">🪽</span><img class="face-smile" src="${mode.sprite}" alt="${mode.name}" width="124" height="148"><img class="face-surprise" src="${mode.surpriseSprite}" alt="" aria-hidden="true" width="124" height="148"></div></div><strong>${mode.name}</strong><span class="play">Play →</span>`;
     // Show the smile until both frames have decoded, preventing an empty half-cycle.
     readyFaces.push(Promise.all([...link.querySelectorAll('img')].map(img => img.decode()))
         .then(() => link).catch(() => null));

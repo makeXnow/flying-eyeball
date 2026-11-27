@@ -39,6 +39,7 @@ second, with staggered timing and a still smile for reduced-motion preferences.
 Starting delays use randomly assigned slots separated by `1 second / number of faces`
 (currently 0, 0.2, 0.4, 0.6, and 0.8 seconds). All decoded faces start on a shared frame,
 and the spacing automatically adjusts when the character list grows.
+Each face card gets 1–4 randomly selected fruit decorations in random corner positions on each visit.
 During gameplay, any active fruit-color burst shows the surprised expression; the smile
 returns after the last burst expires (2.25 seconds after the most recent pickup), or on reset.
 No additional database migration is needed: modes use the existing `scores.mode` column.

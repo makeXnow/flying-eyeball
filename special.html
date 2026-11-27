@@ -38,8 +38,10 @@
         .wing-left { left: calc(50% - 90px); transform: scaleX(-1) rotate(-8deg); }
         .wing-right { right: calc(50% - 90px); transform: rotate(-8deg); }
         .portrait-fruit { position: absolute; z-index: 3; font-size: 16px; }
-        .fruit-one { left: 7%; top: 17px; transform: rotate(-12deg); }
-        .fruit-two { right: 7%; top: 49px; transform: rotate(12deg); }
+        .fruit-slot-0 { left: 5%; top: 12px; transform: rotate(-12deg); }
+        .fruit-slot-1 { right: 5%; top: 42px; transform: rotate(12deg); }
+        .fruit-slot-2 { left: 3%; bottom: 14px; transform: rotate(-10deg); }
+        .fruit-slot-3 { right: 5%; bottom: 2px; transform: rotate(16deg); }
         .expressions-ready .portrait-flight { animation: portrait-float 4s ease-in-out infinite; animation-delay: var(--phase); }
         .expressions-ready .face-smile { animation: portrait-smile 2s steps(1, end) infinite; animation-delay: var(--phase); }
         .expressions-ready .face-surprise { animation: portrait-surprise 2s steps(1, end) infinite; animation-delay: var(--phase); }
@@ -68,6 +70,6 @@
     </nav>
     <footer>Every face has its own leaderboard.<br>A great run can make the main leaderboard too.</footer>
 </main>
-<script type="module" src="src/special.js?v=15"></script>
+<script type="module" src="src/special.js?v=16"></script>
 </body>
 </html>
