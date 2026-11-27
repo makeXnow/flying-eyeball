@@ -28,6 +28,8 @@ Ties keep the older entry ahead. Players can switch boards and see their saved r
 Open `/SpecialMode` to choose Eyeball, Milana, Giavana, Lorenzo, Melanie, or Natalia.
 Each person has a direct URL (`/Milana`, `/Giavana`, `/Lorenzo`, `/Melanie`, `/Natalia`),
 a transparent sprite at `art/<name>-face.png`, and a separate leaderboard with main-board eligibility.
+Each face mode also uses its own matching illustrated splash screen at
+`art/<name>-splashscreen.png`, preloaded and selected before the first paint.
 `/Eyeball` opens the original mode. The same routes work under the app's hosting prefix,
 with lowercase names or a trailing slash. The picker is also available at `/special-mode`.
 The new faces keep the same wings, movement, collision radius, and nose-outward color bursts.

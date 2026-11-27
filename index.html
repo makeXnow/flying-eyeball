@@ -18,7 +18,7 @@
         const splashPreload = document.createElement('link');
         splashPreload.rel = 'preload';
         splashPreload.as = 'image';
-        splashPreload.href = characterId === 'natalia' ? 'art/natalia-splashscreen.png' : characterId ? `art/${characterId}-face.png` : 'art/splashscreen.png';
+        splashPreload.href = characterId ? `art/${characterId}-splashscreen.png` : 'art/splashscreen.png';
         document.head.appendChild(splashPreload);
     </script>
     
@@ -325,23 +325,9 @@
                 object-fit: cover;
             }
         }
-        html[data-game-mode="natalia"] #splash-screen img {
+        html:not([data-game-mode="classic"]) #splash-screen img {
             object-fit: contain;
             background: #f0f9ff;
-        }
-        html:not([data-game-mode="classic"]):not([data-game-mode="natalia"]) #splash-screen img {
-            object-fit: contain;
-            width: 60%; height: 54%; margin: auto;
-            position: absolute; inset: 0;
-            filter: drop-shadow(0 16px 16px #2563eb25);
-        }
-        .character-title { display: none; }
-        html:not([data-game-mode="classic"]):not([data-game-mode="natalia"]) .splash-frame {
-            background: radial-gradient(ellipse at 50% 40%, #fff 0%, #e0f2fe 55%, #93c5fd 100%);
-        }
-        html:not([data-game-mode="classic"]):not([data-game-mode="natalia"]) .character-title {
-            display: block; position: absolute; top: 10%; left: 0; right: 0;
-            font: 900 clamp(26px, 7vw, 48px)/1.1 system-ui; color: #1e40af; text-align: center;
         }
         .mode-link {
             position: fixed; right: 16px; bottom: 16px; z-index: 120;
@@ -361,11 +347,9 @@
                 // No default src for the preload scanner to fetch and flash first.
                 const splashImage = document.getElementById('splash-image');
                 const splashMode = document.documentElement.dataset.gameMode;
-                splashImage.src = splashMode === 'natalia' ? 'art/natalia-splashscreen.png' : splashMode !== 'classic' ? `art/${splashMode}-face.png` : 'art/splashscreen.png';
+                splashImage.src = splashMode !== 'classic' ? `art/${splashMode}-splashscreen.png` : 'art/splashscreen.png';
                 splashImage.alt = document.title;
             </script>
-            <h1 class="character-title" id="character-title"></h1>
-            <script>document.getElementById('character-title').textContent = document.title;</script>
             <button id="start-btn" class="liquid-glass-btn">Start Game</button>
         </div>
     </div>
