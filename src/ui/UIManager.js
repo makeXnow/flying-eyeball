@@ -1,4 +1,4 @@
-import { Leaderboard } from './Leaderboard.js';
+import { Leaderboard } from './Leaderboard.js?v=13';
 import { ENDGAME_MESSAGES } from '../core/endgameMessages.js';
 
 export class UIManager {

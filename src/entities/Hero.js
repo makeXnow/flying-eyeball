@@ -5,7 +5,7 @@ import {
     HERO_FLAP_UP_MAX,
     HERO_FLAP_DOWN_MIN
 } from '../core/constants.js';
-import { NATALIA_MODE } from '../core/mode.js';
+import { FACE_MODE, CURRENT_MODE } from '../core/mode.js?v=13';
 
 export class Hero {
     constructor(x, y) {
@@ -161,8 +161,8 @@ export class Hero {
             ctx.restore();
         }
 
-        if (NATALIA_MODE) {
-            this.drawNatalia(ctx, sprites.Natalia, s10, now);
+        if (FACE_MODE) {
+            this.drawNatalia(ctx, sprites.Face, s10, now);
             ctx.restore();
             return;
         }
@@ -204,7 +204,7 @@ export class Hero {
         if (!this.faceCanvas) {
             this.faceCanvas = document.createElement('canvas');
             this.faceCanvas.width = 256;
-            this.faceCanvas.height = 352;
+            this.faceCanvas.height = Math.round(256 * face.naturalHeight / face.naturalWidth);
         }
         const canvas = this.faceCanvas;
         const layer = canvas.getContext('2d');
@@ -215,7 +215,7 @@ export class Hero {
         // The nose is the origin of every fruit's expanding color burst.
         // Older colors stay underneath, so new pickups bloom through them.
         const noseX = width * 0.5;
-        const noseY = height * 0.69;
+        const noseY = height * (CURRENT_MODE?.noseY || 0.69);
         const maxRadius = Math.hypot(width / 2, Math.max(noseY, height - noseY));
         for (const burst of this.colorBursts) {
             const elapsed = now - burst.time;

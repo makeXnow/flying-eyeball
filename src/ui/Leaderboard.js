@@ -1,5 +1,5 @@
 import { SCORES_API } from '../core/constants.js';
-import { NATALIA_MODE } from '../core/mode.js';
+import { FACE_MODE, MODE_ID, MODE_NAME } from '../core/mode.js?v=13';
 
 const escapeHtml = (value) => String(value).replace(/[&<>"']/g, char =>
     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
@@ -12,14 +12,17 @@ export class Leaderboard {
         this.scores = [];
         this.isFetching = false;
         this.lastPlayerName = '';
-        this.boards = { main: [], natalia: [] };
-        this.board = NATALIA_MODE ? 'natalia' : 'main';
+        this.boards = { main: [], [MODE_ID]: [] };
+        this.board = FACE_MODE ? MODE_ID : 'main';
         this.pendingScore = 0;
         this.entryBoard = null;
         this.onRestartButtonUpdate = () => {};
         const tabs = document.getElementById('leaderboard-tabs');
-        if (tabs && NATALIA_MODE) {
+        if (tabs && FACE_MODE) {
             tabs.hidden = false;
+            const modeTab = tabs.querySelector('[data-board="natalia"]');
+            modeTab.dataset.board = MODE_ID;
+            modeTab.textContent = MODE_NAME;
             tabs.addEventListener('click', event => {
                 const board = event.target.closest('[data-board]')?.dataset.board;
                 if (!board) return;
@@ -33,8 +36,8 @@ export class Leaderboard {
     }
 
     setData(data) {
-        for (const [board, key] of [['main', 'scores'], ['natalia', 'nataliaScores']]) {
-            this.boards[board] = (Array.isArray(data[key]) ? data[key] : [])
+        for (const [board, rows] of [['main', data.scores], [MODE_ID, data.modeScores || (MODE_ID === 'natalia' ? data.nataliaScores : [])]]) {
+            this.boards[board] = (Array.isArray(rows) ? rows : [])
                 .map(row => ({ name: row.name || 'Anonymous', score: Number(row.score) || 0 }))
                 .sort((a, b) => b.score - a.score).slice(0, 5);
         }
@@ -45,7 +48,7 @@ export class Leaderboard {
         this.board = board;
         this.scores = this.boards[board];
         const heading = document.getElementById('leaderboard-heading');
-        if (heading) heading.innerText = board === 'natalia' ? '🏆 Natalia High Scores 🏆' : '🏆 Main High Scores 🏆';
+        if (heading) heading.innerText = board === 'main' ? '🏆 Main High Scores 🏆' : `🏆 ${MODE_NAME} High Scores 🏆`;
         document.querySelectorAll('[data-board]').forEach(button => {
             button.setAttribute('aria-pressed', String(button.dataset.board === board));
             button.style.fontWeight = button.dataset.board === board ? '900' : '400';
@@ -57,7 +60,7 @@ export class Leaderboard {
         this.isFetching = true;
 
         try {
-            const res = await fetch(`${SCORES_API}?v=${Date.now()}`, {
+            const res = await fetch(`${SCORES_API}?mode=${MODE_ID}&v=${Date.now()}`, {
                 method: 'GET',
                 cache: 'no-cache',
             });
@@ -76,7 +79,7 @@ export class Leaderboard {
             const res = await fetch(SCORES_API, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name, score: scoreValue, mode: NATALIA_MODE ? 'natalia' : 'classic' }),
+                body: JSON.stringify({ name, score: scoreValue, mode: MODE_ID }),
                 cache: 'no-cache',
             });
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -84,11 +87,11 @@ export class Leaderboard {
             this.setData(data);
             this.entryBoard = null;
             this.pendingScore = 0;
-            this.selectBoard(data.board || (NATALIA_MODE ? 'natalia' : 'main'));
+            this.selectBoard(data.board || (FACE_MODE ? MODE_ID : 'main'));
             this.renderStatic();
             const status = document.getElementById('leaderboard-status');
-            if (status) status.innerText = NATALIA_MODE && this.board === 'main'
-                ? 'Saved! This run also counts toward Natalia’s leaderboard.' : 'Score saved!';
+            if (status) status.innerText = FACE_MODE && this.board === 'main'
+                ? `Saved! This run also counts toward ${MODE_NAME}’s leaderboard.` : 'Score saved!';
             return true;
         } catch (err) {
             console.error('Score Push Error:', err);
@@ -103,17 +106,17 @@ export class Leaderboard {
         if (!gameActive) {
             this.pendingScore = currentScore;
             const onMain = qualifies(this.boards.main, currentScore);
-            this.entryBoard = onMain ? 'main' : NATALIA_MODE && qualifies(this.boards.natalia, currentScore) ? 'natalia' : null;
-            this.selectBoard(this.entryBoard || (NATALIA_MODE ? 'natalia' : 'main'));
+            this.entryBoard = onMain ? 'main' : FACE_MODE && qualifies(this.boards[MODE_ID], currentScore) ? MODE_ID : null;
+            this.selectBoard(this.entryBoard || (FACE_MODE ? MODE_ID : 'main'));
             const status = document.getElementById('leaderboard-status');
-            if (status) status.innerText = NATALIA_MODE && onMain
+            if (status) status.innerText = FACE_MODE && onMain
                 ? 'Main leaderboard! Your run counts on both boards.' : '';
             onRestartButtonUpdate(false);
             this.renderWithInput(currentScore, onRestartButtonUpdate);
         } else {
             this.pendingScore = 0;
             this.entryBoard = null;
-            this.selectBoard(NATALIA_MODE ? 'natalia' : 'main');
+            this.selectBoard(FACE_MODE ? MODE_ID : 'main');
             this.renderStatic();
         }
     }

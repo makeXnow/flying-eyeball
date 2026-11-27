@@ -4,15 +4,16 @@ import {
   sanitizeName,
   sanitizeScore,
 } from '../_shared/api.js';
+import { FACE_MODE_IDS } from '../../src/core/modeCatalog.js';
 
 const TOP_LIMIT = 5;
 
 async function topScores(db, mode = 'main') {
   const result = await db
     .prepare(
-      `SELECT id, name, score FROM scores ${mode === 'natalia' ? "WHERE mode = 'natalia'" : ''} ORDER BY score DESC, created_at ASC, id ASC LIMIT ?`,
+      `SELECT id, name, score FROM scores ${mode !== 'main' ? 'WHERE mode = ?' : ''} ORDER BY score DESC, created_at ASC, id ASC LIMIT ?`,
     )
-    .bind(TOP_LIMIT)
+    .bind(...(mode === 'main' ? [TOP_LIMIT] : [mode, TOP_LIMIT]))
     .all();
 
   return (result.results || []).map((row) => ({
@@ -28,10 +29,13 @@ export async function onRequestOptions() {
 
 export async function onRequestGet(context) {
   try {
+    const requestedMode = new URL(context.request?.url || 'https://game.test/api/scores').searchParams.get('mode');
+    const mode = FACE_MODE_IDS.includes(requestedMode) ? requestedMode : 'classic';
     const [scores, nataliaScores] = await Promise.all([
       topScores(context.env.DB), topScores(context.env.DB, 'natalia'),
     ]);
-    return jsonResponse({ scores, nataliaScores });
+    const modeScores = mode === 'natalia' ? nataliaScores : mode === 'classic' ? [] : await topScores(context.env.DB, mode);
+    return jsonResponse({ scores, nataliaScores, modeScores, mode });
   } catch (err) {
     console.error('GET /api/scores failed:', err);
     return jsonResponse({ error: 'Database error' }, 500);
@@ -48,7 +52,7 @@ export async function onRequestPost(context) {
 
   const name = sanitizeName(body?.name);
   const score = sanitizeScore(body?.score);
-  const mode = body?.mode === 'natalia' ? 'natalia' : 'classic';
+  const mode = FACE_MODE_IDS.includes(body?.mode) ? body.mode : 'classic';
 
   if (!name) {
     return jsonResponse({ error: 'Name is required' }, 400);
@@ -68,8 +72,9 @@ export async function onRequestPost(context) {
       topScores(context.env.DB), topScores(context.env.DB, 'natalia'),
     ]);
     const onMain = scores.some(row => row.id === inserted.meta.last_row_id);
-    return jsonResponse({ ok: true, scores, nataliaScores,
-      board: mode === 'natalia' && !onMain ? 'natalia' : 'main' });
+    const modeScores = mode === 'natalia' ? nataliaScores : mode === 'classic' ? [] : await topScores(context.env.DB, mode);
+    return jsonResponse({ ok: true, scores, nataliaScores, modeScores, mode,
+      board: mode !== 'classic' && !onMain ? mode : 'main' });
   } catch (err) {
     console.error('POST /api/scores failed:', err);
     return jsonResponse({ error: 'Database error' }, 500);

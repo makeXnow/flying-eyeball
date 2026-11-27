@@ -5,19 +5,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Flying Eyeball</title>
     <script>
-        const nataliaMode = /\/natalia\/?$/i.test(location.pathname);
-        document.documentElement.dataset.gameMode = nataliaMode ? 'natalia' : 'classic';
-        if (nataliaMode) document.title = 'Flying Natalia';
+        const characterName = location.pathname.match(/\/(Natalia|Milana|Giavana|Lorenzo|Melanie)\/?$/i)?.[1];
+        const characterId = characterName?.toLowerCase();
+        document.documentElement.dataset.gameMode = characterId || 'classic';
+        if (characterName) document.title = 'Flying ' + characterId[0].toUpperCase() + characterId.slice(1);
         // Keep asset/API URLs at the app root, including when hosted under a prefix.
-        if (nataliaMode) {
+        if (characterName || /\/eyeball\/?$/i.test(location.pathname)) {
             const base = document.createElement('base');
-            base.href = location.pathname.replace(/natalia\/?$/i, '');
+            base.href = location.pathname.replace(/[^/]+\/?$/, '');
             document.head.appendChild(base);
         }
         const splashPreload = document.createElement('link');
         splashPreload.rel = 'preload';
         splashPreload.as = 'image';
-        splashPreload.href = nataliaMode ? 'art/natalia-splashscreen.png' : 'art/splashscreen.png';
+        splashPreload.href = characterId === 'natalia' ? 'art/natalia-splashscreen.png' : characterId ? `art/${characterId}-face.png` : 'art/splashscreen.png';
         document.head.appendChild(splashPreload);
     </script>
     
@@ -328,6 +329,25 @@
             object-fit: contain;
             background: #f0f9ff;
         }
+        html:not([data-game-mode="classic"]):not([data-game-mode="natalia"]) #splash-screen img {
+            object-fit: contain;
+            width: 60%; height: 54%; margin: auto;
+            position: absolute; inset: 0;
+            filter: drop-shadow(0 16px 16px #2563eb25);
+        }
+        .character-title { display: none; }
+        html:not([data-game-mode="classic"]):not([data-game-mode="natalia"]) .splash-frame {
+            background: radial-gradient(ellipse at 50% 40%, #fff 0%, #e0f2fe 55%, #93c5fd 100%);
+        }
+        html:not([data-game-mode="classic"]):not([data-game-mode="natalia"]) .character-title {
+            display: block; position: absolute; top: 10%; left: 0; right: 0;
+            font: 900 clamp(26px, 7vw, 48px)/1.1 system-ui; color: #1e40af; text-align: center;
+        }
+        .mode-link {
+            position: fixed; right: 16px; bottom: 16px; z-index: 120;
+            border-radius: 24px; padding: 9px 14px; background: #ffffffdd;
+            color: #1e40af; font: 700 12px system-ui; text-decoration: none;
+        }
     </style>
 </head>
     <body oncontextmenu="return false;" style="touch-action: none; overflow: hidden;">
@@ -340,14 +360,17 @@
                 // Set the only image source while parsing, before the first paint.
                 // No default src for the preload scanner to fetch and flash first.
                 const splashImage = document.getElementById('splash-image');
-                const isNataliaSplash = document.documentElement.dataset.gameMode === 'natalia';
-                splashImage.src = isNataliaSplash ? 'art/natalia-splashscreen.png' : 'art/splashscreen.png';
-                splashImage.alt = isNataliaSplash ? 'Flying Natalia' : 'Flying Eyeball';
+                const splashMode = document.documentElement.dataset.gameMode;
+                splashImage.src = splashMode === 'natalia' ? 'art/natalia-splashscreen.png' : splashMode !== 'classic' ? `art/${splashMode}-face.png` : 'art/splashscreen.png';
+                splashImage.alt = document.title;
             </script>
+            <h1 class="character-title" id="character-title"></h1>
+            <script>document.getElementById('character-title').textContent = document.title;</script>
             <button id="start-btn" class="liquid-glass-btn">Start Game</button>
         </div>
     </div>
 
+    <a class="mode-link" href="SpecialMode">Special Modes</a>
     <div id="mute-btn">
         <i data-lucide="volume-2"></i>
     </div>
@@ -387,7 +410,7 @@
     </div>
 </div>
 
-    <script type="module" src="src/main.js?v=12"></script>
+    <script type="module" src="src/main.js?v=13"></script>
     <script>
         // Inline unit calculation for immediate, reliable startup
         function fastUpdateUnit() {

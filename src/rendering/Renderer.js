@@ -1,4 +1,4 @@
-import { SpriteCache } from './SpriteCache.js';
+import { SpriteCache } from './SpriteCache.js?v=13';
 
 export class Renderer {
     constructor(canvas) {
@@ -87,3 +87,4 @@ export class Renderer {
         this.ctx.globalAlpha = 1.0;
     }
 }
+

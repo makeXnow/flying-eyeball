@@ -8,6 +8,7 @@ globalThis.window = { location: { pathname: '/Natalia' } };
 globalThis.document = { getElementById: () => null, querySelectorAll: () => [] };
 const { Leaderboard, qualifies } = await import('../src/ui/Leaderboard.js');
 const { isNataliaPath } = await import('../src/core/mode.js');
+const { FACE_MODES, modeFromPath } = await import('../src/core/modeCatalog.js');
 
 function database() {
     const sql = new DatabaseSync(':memory:');
@@ -80,4 +81,25 @@ test('game-over selects main first, otherwise Natalia, and escapes player names'
     assert.equal(leaderboard.board, 'main');
     assert.equal(qualifies(leaderboard.boards.main, 96), false);
     assert.equal(qualifies([], 0), false);
+});
+
+test('all named modes have independent leaderboards and can also qualify for main', async () => {
+    const db = database();
+    for (let i = 0; i < 5; i++) db.sql.prepare("INSERT INTO scores(name, score, created_at) VALUES ('Main', ?, ?)").run(200 + i, i);
+    for (const mode of FACE_MODES) {
+        assert.equal(modeFromPath(`/apps/flyingeyeball/${mode.path}/`).id, mode.id);
+        assert.equal(modeFromPath(`/${mode.id.toUpperCase()}`).id, mode.id);
+        const response = await onRequestPost({ env: { DB: db }, request: new Request('https://game.test/api/scores', { method: 'POST', body: JSON.stringify({ name: mode.name, score: 10, mode: mode.id }) }) });
+        const data = await response.json();
+        assert.equal(data.board, mode.id);
+        assert.deepEqual(data.modeScores.map(row => row.name), [mode.name]);
+        const get = await (await onRequestGet({ env: { DB: db }, request: new Request(`https://game.test/api/scores?mode=${mode.id}`) })).json();
+        assert.deepEqual(get.modeScores.map(row => row.name), [mode.name]);
+    }
+    const winner = await (await onRequestPost({ env: { DB: db }, request: new Request('https://game.test/api/scores', { method: 'POST', body: JSON.stringify({ name: 'Milana Wins', score: 300, mode: 'milana' }) }) })).json();
+    assert.equal(winner.board, 'main');
+    assert.equal(winner.modeScores[0].id, winner.scores[0].id);
+    assert.equal(winner.nataliaScores.length, 1);
+    assert.equal(modeFromPath('/SpecialMode'), null);
+    assert.equal(modeFromPath('/%bad-encoding'), null);
 });

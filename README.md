@@ -23,6 +23,16 @@ A Natalia run occupies one database row, so qualifying on both boards never dupl
 The main board is shown first when a score qualifies there; otherwise the Natalia board is shown.
 Ties keep the older entry ahead. Players can switch boards and see their saved result before restarting.
 
+## Special modes
+
+Open `/SpecialMode` to choose Eyeball, Milana, Giavana, Lorenzo, Melanie, or Natalia.
+Each person has a direct URL (`/Milana`, `/Giavana`, `/Lorenzo`, `/Melanie`, `/Natalia`),
+a transparent sprite at `art/<name>-face.png`, and a separate leaderboard with main-board eligibility.
+`/Eyeball` opens the original mode. The same routes work under the app's hosting prefix,
+with lowercase names or a trailing slash. The picker is also available at `/special-mode`.
+The new faces keep the same wings, movement, collision radius, and nose-outward color bursts.
+No additional database migration is needed: modes use the existing `scores.mode` column.
+
 ## Testing and deployment
 
 Run `npm test` with Node 22.13+ (uses Node's built-in SQLite).
