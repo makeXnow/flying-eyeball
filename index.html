@@ -18,7 +18,7 @@
         const splashPreload = document.createElement('link');
         splashPreload.rel = 'preload';
         splashPreload.as = 'image';
-        splashPreload.href = characterId ? `art/${characterId}-splashscreen.png` : 'art/splashscreen.png';
+        splashPreload.href = characterId ? `art/${characterId}-splashscreen.png?v=action-1` : 'art/splashscreen.png';
         document.head.appendChild(splashPreload);
     </script>
     
@@ -347,7 +347,7 @@
                 // No default src for the preload scanner to fetch and flash first.
                 const splashImage = document.getElementById('splash-image');
                 const splashMode = document.documentElement.dataset.gameMode;
-                splashImage.src = splashMode !== 'classic' ? `art/${splashMode}-splashscreen.png` : 'art/splashscreen.png';
+                splashImage.src = splashMode !== 'classic' ? `art/${splashMode}-splashscreen.png?v=action-1` : 'art/splashscreen.png';
                 splashImage.alt = document.title;
             </script>
             <button id="start-btn" class="liquid-glass-btn">Start Game</button>
